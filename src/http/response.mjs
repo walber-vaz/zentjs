@@ -45,6 +45,8 @@ export class ZentResponse {
    * @returns {this}
    */
   status(code) {
+    if (this.sent) return this;
+
     this.#statusCode = code;
     return this;
   }
@@ -56,6 +58,8 @@ export class ZentResponse {
    * @returns {this}
    */
   header(name, value) {
+    if (this.sent) return this;
+
     this.#raw.setHeader(name, value);
     return this;
   }
@@ -74,6 +78,8 @@ export class ZentResponse {
    * @param {*} data
    */
   json(data) {
+    if (this.sent) return;
+
     const body = JSON.stringify(data);
     this.type(MIME_JSON);
     this.#end(body);
@@ -84,6 +90,8 @@ export class ZentResponse {
    * @param {string | Buffer} data
    */
   send(data) {
+    if (this.sent) return;
+
     if (!this.#raw.getHeader(CONTENT_TYPE)) {
       this.type(Buffer.isBuffer(data) ? 'application/octet-stream' : MIME_TEXT);
     }
@@ -95,6 +103,8 @@ export class ZentResponse {
    * @param {string} data
    */
   html(data) {
+    if (this.sent) return;
+
     this.type(MIME_HTML);
     this.#end(data);
   }
@@ -105,6 +115,8 @@ export class ZentResponse {
    * @param {number} [code=HttpStatus.FOUND]
    */
   redirect(url, code = HttpStatus.FOUND) {
+    if (this.sent) return;
+
     this.#statusCode = code;
     this.header('Location', url);
     this.#end();
@@ -115,6 +127,8 @@ export class ZentResponse {
    * @param {number} [code=HttpStatus.NO_CONTENT]
    */
   empty(code = HttpStatus.NO_CONTENT) {
+    if (this.sent) return;
+
     this.#statusCode = code;
     this.#end();
   }
@@ -124,6 +138,8 @@ export class ZentResponse {
    * @param {string | Buffer} [body]
    */
   #end(body) {
+    if (this.sent) return;
+
     this.#raw.writeHead(this.#statusCode);
 
     if (body !== undefined) {

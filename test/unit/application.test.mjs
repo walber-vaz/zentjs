@@ -412,6 +412,20 @@ describe('Application (Zent)', () => {
 
       expect(res.statusCode).toBe(405);
     });
+
+    it('should keep original response when handler throws after sending', async () => {
+      const app = zent();
+
+      app.get('/partial-fail', (ctx) => {
+        ctx.res.status(202).json({ accepted: true });
+        throw new Error('late failure');
+      });
+
+      const res = await app.inject({ method: 'GET', url: '/partial-fail' });
+
+      expect(res.statusCode).toBe(202);
+      expect(res.json()).toEqual({ accepted: true });
+    });
   });
 
   describe('setNotFoundHandler()', () => {

@@ -8,8 +8,10 @@ import { ZentResponse } from '../../src/http/response.mjs';
 function createRawResponse() {
   const headers = {};
   let headWritten = false;
+  let headWriteCount = 0;
   let headStatusCode = null;
   let endData = undefined;
+  let endCount = 0;
 
   return {
     writableEnded: false,
@@ -21,10 +23,12 @@ function createRawResponse() {
     },
     writeHead(statusCode) {
       headWritten = true;
+      headWriteCount += 1;
       headStatusCode = statusCode;
     },
     end(data) {
       this.writableEnded = true;
+      endCount += 1;
       endData = data;
     },
     // Test helpers
@@ -37,8 +41,14 @@ function createRawResponse() {
     get _headStatusCode() {
       return headStatusCode;
     },
+    get _headWriteCount() {
+      return headWriteCount;
+    },
     get _endData() {
       return endData;
+    },
+    get _endCount() {
+      return endCount;
     },
   };
 }
@@ -219,6 +229,46 @@ describe('ZentResponse', () => {
       expect(raw._headStatusCode).toBe(201);
       expect(raw._headers['X-Request-Id']).toBe('abc');
       expect(raw._endData).toBe('{"created":true}');
+    });
+  });
+
+  describe('idempotency after sent', () => {
+    it('should ignore second send call', () => {
+      const raw = createRawResponse();
+      const res = new ZentResponse(raw);
+
+      res.send('first');
+      res.send('second');
+
+      expect(raw._endData).toBe('first');
+      expect(raw._endCount).toBe(1);
+      expect(raw._headWriteCount).toBe(1);
+    });
+
+    it('should ignore headers and status changes after send', () => {
+      const raw = createRawResponse();
+      const res = new ZentResponse(raw);
+
+      res.status(201).header('X-First', 'yes').send('done');
+      res.status(500).header('X-Late', 'no').json({ overwritten: true });
+
+      expect(raw._headStatusCode).toBe(201);
+      expect(raw._headers['X-First']).toBe('yes');
+      expect(raw._headers['X-Late']).toBeUndefined();
+      expect(raw._endData).toBe('done');
+      expect(raw._endCount).toBe(1);
+    });
+
+    it('should ignore redirect/empty after already sent', () => {
+      const raw = createRawResponse();
+      const res = new ZentResponse(raw);
+
+      res.json({ ok: true });
+      res.redirect('/other');
+      res.empty();
+
+      expect(raw._endCount).toBe(1);
+      expect(raw._headers['Location']).toBeUndefined();
     });
   });
 });
