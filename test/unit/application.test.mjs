@@ -1056,18 +1056,21 @@ describe('Application (Zent)', () => {
 
     it('should allow plugin to decorate via scope.decorate()', async () => {
       const app = zent();
+      let scopeHasDecorator = false;
 
       app.register(async (scope) => {
         scope.decorate('dbClient', { query: () => 'result' });
+        scopeHasDecorator = scope.hasDecorator('dbClient');
       });
 
       app.get('/dec', (ctx) => {
-        ctx.res.json({ has: ctx.app.hasDecorator('dbClient') });
+        ctx.res.json({ hasOnApp: ctx.app.hasDecorator('dbClient') });
       });
 
       const res = await app.inject({ method: 'GET', url: '/dec' });
 
-      expect(res.json()).toEqual({ has: true });
+      expect(scopeHasDecorator).toBe(true);
+      expect(res.json()).toEqual({ hasOnApp: false });
     });
 
     it('should allow plugin to check decorator via scope.hasDecorator()', async () => {
@@ -1103,6 +1106,61 @@ describe('Application (Zent)', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual({ nested: true });
+    });
+
+    it('should inherit decorators from parent plugin scope to nested plugin scope', async () => {
+      const app = zent();
+
+      app.register(
+        async (scope) => {
+          scope.decorate('repo', { find: () => 'ok' });
+
+          scope.register(async (innerScope) => {
+            innerScope.get('/check', (ctx) => {
+              ctx.res.json({ hasRepo: innerScope.hasDecorator('repo') });
+            });
+          });
+        },
+        { prefix: '/api' }
+      );
+
+      const res = await app.inject({ method: 'GET', url: '/api/check' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ hasRepo: true });
+    });
+
+    it('should not leak decorators between sibling plugin scopes', async () => {
+      const app = zent();
+
+      app.register(
+        async (scope) => {
+          scope.decorate('aOnly', true);
+
+          scope.get('/a', (ctx) => {
+            ctx.res.json({ hasAOnly: scope.hasDecorator('aOnly') });
+          });
+        },
+        { prefix: '/scope-a' }
+      );
+
+      app.register(
+        async (scope) => {
+          scope.get('/b', (ctx) => {
+            ctx.res.json({ hasAOnly: scope.hasDecorator('aOnly') });
+          });
+        },
+        { prefix: '/scope-b' }
+      );
+
+      const resA = await app.inject({ method: 'GET', url: '/scope-a/a' });
+      const resB = await app.inject({ method: 'GET', url: '/scope-b/b' });
+
+      expect(resA.statusCode).toBe(200);
+      expect(resA.json()).toEqual({ hasAOnly: true });
+
+      expect(resB.statusCode).toBe(200);
+      expect(resB.json()).toEqual({ hasAOnly: false });
     });
 
     it('should support nested register without inner prefix', async () => {

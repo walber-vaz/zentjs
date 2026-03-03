@@ -28,6 +28,31 @@ const HTTP_METHODS = [
   'OPTIONS',
 ];
 
+const SCOPE_DECORATORS = Symbol('scopeDecorators');
+
+/**
+ * Cria um registro de decorators com herança por escopo.
+ * @param {{ values: object } | null} parentRegistry
+ * @returns {{ values: object, has: (name: string) => boolean, define: (name: string, value: *) => void }}
+ */
+function createScopeDecoratorRegistry(parentRegistry = null) {
+  const values = Object.create(parentRegistry?.values || null);
+
+  return {
+    values,
+    has(name) {
+      return name in values;
+    },
+    define(name, value) {
+      if (name in values) {
+        throw new Error(`Decorator "${name}" already exists`);
+      }
+
+      values[name] = value;
+    },
+  };
+}
+
 /**
  * Normaliza prefixo de middleware.
  * @param {string} prefix
@@ -290,8 +315,24 @@ export class Zent {
   #createScope(opts) {
     const prefix = opts.prefix || '';
     const parent = this;
+    const decoratorRegistry = createScopeDecoratorRegistry(
+      opts[SCOPE_DECORATORS] || null
+    );
 
-    return {
+    const scope = {};
+
+    const scopeDecorate = (name, value) => {
+      if (name in scope) {
+        throw new Error(`Decorator "${name}" already exists`);
+      }
+
+      decoratorRegistry.define(name, value);
+      scope[name] = value;
+    };
+
+    const scopeHasDecorator = (name) => decoratorRegistry.has(name);
+
+    return Object.assign(scope, {
       get: (path, handler, routeOpts) =>
         parent.get(prefix + path, handler, routeOpts),
       post: (path, handler, routeOpts) =>
@@ -315,15 +356,20 @@ export class Zent {
       addHook: (phase, fn) => parent.addHook(phase, fn),
       setErrorHandler: (fn) => parent.setErrorHandler(fn),
       setNotFoundHandler: (fn) => parent.setNotFoundHandler(fn),
-      decorate: (name, value) => parent.decorate(name, value),
-      hasDecorator: (name) => parent.hasDecorator(name),
+      decorate: scopeDecorate,
+      hasDecorator: scopeHasDecorator,
       register: (fn, pluginOpts) => {
-        parent.#plugins.register((scopedApp) => fn(scopedApp, pluginOpts), {
-          ...pluginOpts,
+        const nextOpts = {
+          ...(pluginOpts || {}),
           prefix: prefix + (pluginOpts?.prefix || ''),
-        });
+          [SCOPE_DECORATORS]: decoratorRegistry,
+        };
+
+        parent.#plugins.register((scopedApp, resolvedOpts) => {
+          return fn(scopedApp, resolvedOpts);
+        }, nextOpts);
       },
-    };
+    });
   }
 
   // ─── Server ───────────────────────────────────────────
