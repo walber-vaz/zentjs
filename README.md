@@ -41,6 +41,7 @@
   - [Guia: Testes com inject + Vitest](#guia-testes-com-inject--vitest)
 - [Roadmap de Implementação](#roadmap-de-implementação)
 - [Decisões Técnicas (ADRs)](#decisões-técnicas-adrs)
+- [Contribuição](#contribuição)
 - [Referências](#referências)
 
 ---
@@ -1530,6 +1531,40 @@ Objetivo: preparar baseline para evolução com segurança.
 **Contexto:** Fastify parseia body apenas quando necessário.
 **Decisão:** Body não é parseado automaticamente — exige middleware explícito.
 **Motivo:** Zero overhead para rotas que não precisam de body (GET, DELETE, health checks).
+
+---
+
+## Contribuição
+
+Este projeto valida commits com **Conventional Commits** via `commitlint`.
+
+Formato esperado:
+
+```text
+tipo(escopo-opcional): descrição
+```
+
+Tipos aceitos pelo projeto:
+
+- `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`
+
+Exemplos válidos:
+
+- `feat(router): adiciona suporte a wildcard`
+- `fix(cors): corrige headers do preflight`
+- `docs: atualiza README com badges`
+- `test: cobre fluxo de plugins`
+- `chore: ajusta workflow de release`
+
+Para mudanças incompatíveis, use `!` após o tipo/escopo:
+
+- `feat!: remove API legada de register`
+
+ou informe no corpo do commit:
+
+```text
+BREAKING CHANGE: descrição da mudança incompatível
+```
 
 ---
 

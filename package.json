@@ -1,6 +1,6 @@
 {
   "name": "@zentjs/zentjs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Framework web minimalista e performático para Node.js",
   "license": "BSD-3-Clause",
   "author": "Walber Vaz",
