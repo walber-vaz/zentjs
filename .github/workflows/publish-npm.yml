@@ -18,8 +18,6 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     environment: Publish
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,13 +28,6 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           scope: '@zentjs'
-
-      - name: Validate npm token
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "NPM_TOKEN secret is not configured in GitHub Actions secrets."
-            exit 1
-          fi
 
       - name: Validate tag matches package version
         if: startsWith(github.ref, 'refs/tags/v')
