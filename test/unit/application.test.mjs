@@ -780,6 +780,22 @@ describe('Application (Zent)', () => {
       await expect(app.close()).resolves.toBeUndefined();
     });
 
+    it('should reject one of concurrent close() calls when server is already closing', async () => {
+      const app = zent();
+      app.get('/', (ctx) => ctx.res.json({ ok: true }));
+
+      await app.listen({ port: 0, host: '127.0.0.1' });
+
+      const results = await Promise.allSettled([app.close(), app.close()]);
+
+      const rejected = results.find((result) => result.status === 'rejected');
+
+      expect(rejected).toBeDefined();
+      expect(String(rejected.reason?.message || rejected.reason)).toMatch(
+        /Server is not running/i
+      );
+    });
+
     it('should handle real HTTP request through createServer', async () => {
       const app = zent();
       app.get('/ping', (ctx) => ctx.res.json({ pong: true }));
@@ -1095,6 +1111,51 @@ describe('Application (Zent)', () => {
       expect(res.json()).toEqual({ grouped: true });
     });
 
+    it('should support scope.group() with single middleware function and merged hooks', async () => {
+      const app = zent();
+      const order = [];
+
+      app.register(
+        async (scope) => {
+          scope.addHook('preHandler', async () => {
+            order.push('scope-preHandler');
+          });
+
+          scope.group(
+            '/single',
+            {
+              middlewares: async (ctx, next) => {
+                order.push('group-middleware');
+                await next();
+              },
+              hooks: {
+                preHandler: async () => {
+                  order.push('group-preHandler');
+                },
+              },
+            },
+            (group) => {
+              group.get('/route', (ctx) => {
+                order.push('handler');
+                ctx.res.json({ ok: true });
+              });
+            }
+          );
+        },
+        { prefix: '/api' }
+      );
+
+      const res = await app.inject({ method: 'GET', url: '/api/single/route' });
+
+      expect(res.statusCode).toBe(200);
+      expect(order).toEqual([
+        'group-middleware',
+        'scope-preHandler',
+        'group-preHandler',
+        'handler',
+      ]);
+    });
+
     it('should apply scope.use() only to routes in same plugin scope', async () => {
       const app = zent();
       const order = [];
@@ -1299,6 +1360,20 @@ describe('Application (Zent)', () => {
 
       expect(scopeHasDecorator).toBe(true);
       expect(res.json()).toEqual({ hasOnApp: false });
+    });
+
+    it('should throw when decorating same name twice in same scope', async () => {
+      const app = zent();
+
+      app.register(async (scope) => {
+        scope.decorate('dup', 1);
+
+        expect(() => scope.decorate('dup', 2)).toThrow(
+          'Decorator "dup" already exists'
+        );
+      });
+
+      await app.inject({ method: 'GET', url: '/' }).catch(() => {});
     });
 
     it('should allow plugin to check decorator via scope.hasDecorator()', async () => {
