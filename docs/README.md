@@ -10,6 +10,12 @@ Este diretório concentra a documentação completa do projeto, separada por tó
 - [API pública](api.md)
 - [Guias práticos](guides.md)
 
+## Exemplos executáveis
+
+- JavaScript: `node examples/hello-world.mjs`
+- Plugins: `node examples/with-plugins.mjs`
+- TypeScript (tipos nativos do Node): `node --experimental-strip-types examples/typed-app.ts`
+
 ## Comece por aqui
 
 1. Visão geral técnica: [Arquitetura](architecture.md)

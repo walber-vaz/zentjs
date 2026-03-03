@@ -1,4 +1,4 @@
-import { bodyParser, NotFoundError, zent } from '../src/index.mjs';
+import { bodyParser, NotFoundError, zent } from '../src/zent.mjs';
 
 const app = zent();
 

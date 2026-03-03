@@ -16,6 +16,23 @@ Opções suportadas:
 - `ignoreTrailingSlash` (`boolean`, default `true`)
 - `caseSensitive` (`boolean`, default `false`)
 
+### TypeScript com estado tipado
+
+```ts
+import { zent } from '@zentjs/zentjs';
+
+type AppState = {
+  userId?: string;
+};
+
+const app = zent<AppState>();
+
+app.get('/profile', (ctx) => {
+  ctx.state.userId = 'u_123';
+  return ctx.res.json({ userId: ctx.state.userId });
+});
+```
+
 ## Rotas
 
 ```js
@@ -88,6 +105,21 @@ Contrato de plugin:
 async function myPlugin(scope, opts) {
   // scope compatível com app e encapsulado
 }
+```
+
+### TypeScript com decorators tipados
+
+```ts
+import { zent } from '@zentjs/zentjs';
+
+const app = zent();
+
+const appWithUtils = app.decorate('sum', (a: number, b: number) => a + b);
+
+appWithUtils.get('/sum', (ctx) => {
+  const total = ctx.app.sum(2, 3);
+  return ctx.res.json({ total });
+});
 ```
 
 ## Hooks e handlers

@@ -59,6 +59,29 @@ async function authPlugin(app) {
 }
 ```
 
+## Autenticação por plugin (TypeScript)
+
+```ts
+import { UnauthorizedError, zent } from '@zentjs/zentjs';
+
+type AppState = {
+  userId?: string;
+};
+
+const app = zent<AppState>();
+
+const appWithAuth = app.decorate('authenticate', async (ctx) => {
+  const token = ctx.req.get('authorization');
+  if (!token) throw new UnauthorizedError('Missing token');
+  ctx.state.userId = 'user_from_token';
+});
+
+appWithAuth.get('/me', async (ctx) => {
+  await ctx.app.authenticate(ctx);
+  return ctx.res.json({ userId: ctx.state.userId });
+});
+```
+
 ## Métricas por requisição
 
 ```js
@@ -98,3 +121,4 @@ describe('API', () => {
 - `examples/hello-world.mjs`
 - `examples/rest-api.mjs`
 - `examples/with-plugins.mjs`
+- `examples/typed-app.ts` (execute com `node --experimental-strip-types examples/typed-app.ts`)

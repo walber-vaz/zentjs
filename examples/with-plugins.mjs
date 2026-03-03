@@ -1,4 +1,4 @@
-import { bodyParser, cors, zent } from '../src/index.mjs';
+import { bodyParser, cors, zent } from '../src/zent.mjs';
 
 const app = zent();
 

@@ -518,11 +518,8 @@ export class Zent {
     const registerMethod =
       (method) =>
       (path, handler, routeOpts = {}) => {
-        return parent[method](
-          prefix + path,
-          handler,
-          withScopeRouteOpts(routeOpts)
-        );
+        parent[method](prefix + path, handler, withScopeRouteOpts(routeOpts));
+        return scope;
       };
 
     const scopeRoute = (def) => {
@@ -531,12 +528,13 @@ export class Zent {
         hooks: def.hooks,
       });
 
-      return parent.route({
+      parent.route({
         ...def,
         path: prefix + def.path,
         middlewares: routeOpts.middlewares,
         hooks: routeOpts.hooks,
       });
+      return scope;
     };
 
     const scopeAll = (path, handler, routeOpts = {}) => {
@@ -576,8 +574,14 @@ export class Zent {
       group: scopeGroup,
       use: scopeUse,
       addHook: scopeAddHook,
-      setErrorHandler: (fn) => parent.setErrorHandler(fn),
-      setNotFoundHandler: (fn) => parent.setNotFoundHandler(fn),
+      setErrorHandler: (fn) => {
+        parent.setErrorHandler(fn);
+        return scope;
+      },
+      setNotFoundHandler: (fn) => {
+        parent.setNotFoundHandler(fn);
+        return scope;
+      },
       decorate: scopeDecorate,
       hasDecorator: scopeHasDecorator,
       register: (fn, pluginOpts) => {

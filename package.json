@@ -1,16 +1,21 @@
 {
   "name": "@zentjs/zentjs",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Framework web minimalista e performático para Node.js",
   "license": "BSD-3-Clause",
   "author": "Walber Vaz <wvs.walber@gmail.com>",
   "type": "module",
-  "main": "./src/index.mjs",
+  "main": "./src/zent.mjs",
+  "types": "./src/zent.d.ts",
   "exports": {
-    ".": "./src/index.mjs"
+    ".": {
+      "types": "./src/zent.d.ts",
+      "import": "./src/zent.mjs"
+    }
   },
   "files": [
     "src",
+    "src/zent.d.ts",
     "README.md",
     "LICENSE"
   ],

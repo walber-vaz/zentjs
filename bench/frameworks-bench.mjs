@@ -5,7 +5,7 @@ import autocannon from 'autocannon';
 import express from 'express';
 import Fastify from 'fastify';
 
-import { bodyParser, zent } from '../src/index.mjs';
+import { bodyParser, zent } from '../src/zent.mjs';
 
 const OUTPUT_JSON = path.resolve('bench/frameworks.latest.json');
 const OUTPUT_MD = path.resolve('bench/frameworks.latest.md');

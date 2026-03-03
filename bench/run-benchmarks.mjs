@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
-import { zent } from '../src/index.mjs';
+import { zent } from '../src/zent.mjs';
 
 const RESULTS_DIR = path.resolve('bench');
 const LATEST_FILE = path.join(RESULTS_DIR, 'baseline.latest.json');

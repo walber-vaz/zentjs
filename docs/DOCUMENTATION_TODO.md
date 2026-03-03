@@ -20,7 +20,7 @@ Objetivo: confirmar contratos reais antes de escrever/expandir a doc.
 
 Checklist concluído:
 
-- [x] Exportações públicas em `src/index.mjs`
+- [x] Exportações públicas em `src/zent.mjs`
 - [x] API da aplicação em `src/core/application.mjs`
 - [x] Recursos de roteamento (`group`, hooks/middlewares de rota)
 - [x] Hooks globais e de rota (`onRequest` → `onError`, incluindo `onSend`)
