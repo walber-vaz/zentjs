@@ -226,6 +226,9 @@ export class Zent {
   /** @type {number} */
   #middlewareVersion;
 
+  /** @type {Record<string, boolean>} */
+  #globalHooksActive;
+
   /** @type {((ctx: Context) => void | Promise<void>) | null} */
   #notFoundHandler;
 
@@ -247,6 +250,9 @@ export class Zent {
     this.#plugins = new PluginManager();
     this.#notFoundHandler = null;
     this.#middlewareVersion = 0;
+    this.#globalHooksActive = Object.fromEntries(
+      HOOK_PHASES.map((phase) => [phase, false])
+    );
   }
 
   // ─── Routing ──────────────────────────────────────────
@@ -331,6 +337,7 @@ export class Zent {
    */
   addHook(phase, fn) {
     this.#lifecycle.addHook(phase, fn);
+    this.#globalHooksActive[phase] = true;
     return this;
   }
 
@@ -747,43 +754,56 @@ export class Zent {
   async #handleRequest(rawReq, rawRes) {
     const ctx = new Context(rawReq, rawRes, this);
     let route = null;
+    let routeHooks = null;
 
     try {
       let handlerResult;
 
       // 1. onRequest hooks
-      await this.#lifecycle.run('onRequest', ctx);
+      if (this.#globalHooksActive.onRequest) {
+        await this.#lifecycle.run('onRequest', ctx);
+      }
 
       // 2. Router lookup
       const matchedRoute = await this.#findRoute(ctx);
 
       if (!matchedRoute) {
-        await this.#lifecycle.run('onResponse', ctx);
+        if (this.#globalHooksActive.onResponse) {
+          await this.#lifecycle.run('onResponse', ctx);
+        }
         return;
       }
 
       const { route: resolvedRoute, params } = matchedRoute;
       route = resolvedRoute;
+      this.#ensureCompiledRoute(route);
+      routeHooks = route[ROUTE_HOOKS];
 
       // 3. Set params no request
       ctx.req.params = params;
 
       // 3.1 route-level onRequest hooks
-      await this.#runRouteHooks(route, 'onRequest', ctx);
+      await this.#runHooksList(routeHooks.onRequest, ctx);
 
       // 4. preParsing hooks
-      await this.#lifecycle.run('preParsing', ctx);
-      await this.#runRouteHooks(route, 'preParsing', ctx);
+      if (this.#globalHooksActive.preParsing) {
+        await this.#lifecycle.run('preParsing', ctx);
+      }
+      await this.#runHooksList(routeHooks.preParsing, ctx);
 
       // 5. preValidation hooks
-      await this.#lifecycle.run('preValidation', ctx);
-      await this.#runRouteHooks(route, 'preValidation', ctx);
+      if (this.#globalHooksActive.preValidation) {
+        await this.#lifecycle.run('preValidation', ctx);
+      }
+      await this.#runHooksList(routeHooks.preValidation, ctx);
 
       // 6. Montar pipeline: global middlewares + route middlewares + handler
       // 7. preHandler hooks (executados dentro do pipeline, antes do handler)
       const handler = async (ctx) => {
-        await this.#lifecycle.run('preHandler', ctx);
-        await this.#runRouteHooks(route, 'preHandler', ctx);
+        if (this.#globalHooksActive.preHandler) {
+          await this.#lifecycle.run('preHandler', ctx);
+        }
+        await this.#runHooksList(routeHooks.preHandler, ctx);
 
         handlerResult = await route.handler(ctx);
       };
@@ -794,17 +814,28 @@ export class Zent {
 
       // 8.1 onSend + envio automático para payload retornado pelo handler
       if (!ctx.res.sent && handlerResult !== undefined) {
-        let payload = await this.#lifecycle.run('onSend', ctx, handlerResult);
-        payload = await this.#runRouteOnSendHooks(route, ctx, payload);
+        let payload = handlerResult;
+
+        if (this.#globalHooksActive.onSend) {
+          payload = await this.#lifecycle.run('onSend', ctx, payload);
+        }
+
+        payload = await this.#runOnSendHooksList(
+          routeHooks.onSend,
+          ctx,
+          payload
+        );
         this.#sendPayload(ctx, payload);
       }
 
       // 9. onResponse hooks (após a resposta ser preparada/enviada)
-      await this.#lifecycle.run('onResponse', ctx);
-      await this.#runRouteHooks(route, 'onResponse', ctx);
+      if (this.#globalHooksActive.onResponse) {
+        await this.#lifecycle.run('onResponse', ctx);
+      }
+      await this.#runHooksList(routeHooks.onResponse, ctx);
     } catch (error) {
       // Executa onError hooks
-      if (this.#lifecycle.hasHooks('onError')) {
+      if (this.#globalHooksActive.onError) {
         try {
           await this.#lifecycle.run('onError', ctx, error);
         } catch {
@@ -820,7 +851,6 @@ export class Zent {
         }
       }
 
-      // Error handler gera a resposta de erro
       await this.#errorHandler.handle(error, ctx);
     }
   }
@@ -841,24 +871,31 @@ export class Zent {
     const hooks = route?.[ROUTE_HOOKS]?.[phase];
     if (!hooks || hooks.length === 0) return;
 
+    await this.#runHooksList(hooks, ctx, ...args);
+  }
+
+  /**
+   * Executa uma lista de hooks sequencialmente.
+   * @param {Function[] | undefined} hooks
+   * @param {Context} ctx
+   * @param {...*} args
+   */
+  async #runHooksList(hooks, ctx, ...args) {
+    if (!hooks || hooks.length === 0) return;
+
     for (const hook of hooks) {
       await hook(ctx, ...args);
     }
   }
 
   /**
-   * Executa hooks de rota de onSend encadeando payload.
-   * @param {object | null} route
+   * Executa hooks onSend encadeando payload.
+   * @param {Function[] | undefined} hooks
    * @param {Context} ctx
    * @param {*} payload
    * @returns {Promise<*>}
    */
-  async #runRouteOnSendHooks(route, ctx, payload) {
-    if (route) {
-      this.#ensureCompiledRoute(route);
-    }
-
-    const hooks = route?.[ROUTE_HOOKS]?.onSend;
+  async #runOnSendHooksList(hooks, ctx, payload) {
     if (!hooks || hooks.length === 0) return payload;
 
     let current = payload;
