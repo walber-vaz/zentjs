@@ -1,6 +1,14 @@
 {
-  "generatedAt": "2026-03-03T14:24:52.524Z",
+  "generatedAt": "2026-03-03T14:52:36.358Z",
   "node": "v24.14.0",
+  "benchOptions": {
+    "connections": 50,
+    "duration": 5,
+    "pipelining": 1,
+    "warmupRounds": 1,
+    "measuredRounds": 5,
+    "aggregation": "median"
+  },
   "scenarios": [
     {
       "name": "static_get",
@@ -8,35 +16,176 @@
         {
           "framework": "zent",
           "scenario": "static_get",
-          "reqPerSec": 15873.6,
-          "latencyMsAvg": 2.51,
-          "latencyMsP99": 4,
-          "throughputBytesPerSec": 3158630.4,
+          "reqPerSec": 13650.4,
+          "latencyMsAvg": 3.26,
+          "latencyMsP99": 5,
+          "throughputBytesPerSec": 2716262.4,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 13530.4,
+              "latencyMsAvg": 3.27,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2692915.2,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 14194.4,
+              "latencyMsAvg": 3.12,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2824396.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 13229.6,
+              "latencyMsAvg": 3.35,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2632704,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 13820,
+              "latencyMsAvg": 3.2,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2750259.2,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 13650.4,
+              "latencyMsAvg": 3.26,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2716262.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         },
         {
           "framework": "fastify",
           "scenario": "static_get",
-          "reqPerSec": 19374.41,
-          "latencyMsAvg": 2.06,
-          "latencyMsP99": 3,
-          "throughputBytesPerSec": 3526041.6,
+          "reqPerSec": 17652.8,
+          "latencyMsAvg": 2.29,
+          "latencyMsP99": 4,
+          "throughputBytesPerSec": 3212288,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 17358.41,
+              "latencyMsAvg": 2.3,
+              "latencyMsP99": 4,
+              "throughputBytesPerSec": 3159449.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 17665.6,
+              "latencyMsAvg": 2.29,
+              "latencyMsP99": 4,
+              "throughputBytesPerSec": 3215155.2,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 18433.6,
+              "latencyMsAvg": 2.22,
+              "latencyMsP99": 4,
+              "throughputBytesPerSec": 3355238.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 17652.8,
+              "latencyMsAvg": 2.26,
+              "latencyMsP99": 4,
+              "throughputBytesPerSec": 3212288,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 17441.6,
+              "latencyMsAvg": 2.3,
+              "latencyMsP99": 4,
+              "throughputBytesPerSec": 3174195.2,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         },
         {
           "framework": "express",
           "scenario": "static_get",
-          "reqPerSec": 12332,
-          "latencyMsAvg": 3.37,
-          "latencyMsP99": 5,
-          "throughputBytesPerSec": 3021004.8,
+          "reqPerSec": 11181.6,
+          "latencyMsAvg": 4,
+          "latencyMsP99": 6,
+          "throughputBytesPerSec": 2738380.8,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 11181.6,
+              "latencyMsAvg": 4,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2738380.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 11255.2,
+              "latencyMsAvg": 3.95,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2756812.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 11008.8,
+              "latencyMsAvg": 4.12,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2696601.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 11221.6,
+              "latencyMsAvg": 3.96,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2748211.2,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 10879.2,
+              "latencyMsAvg": 4.15,
+              "latencyMsP99": 7,
+              "throughputBytesPerSec": 2665472,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         }
       ]
     },
@@ -46,35 +195,176 @@
         {
           "framework": "zent",
           "scenario": "param_get",
-          "reqPerSec": 15894.4,
-          "latencyMsAvg": 2.71,
-          "latencyMsP99": 3,
-          "throughputBytesPerSec": 3179110.4,
+          "reqPerSec": 14234.4,
+          "latencyMsAvg": 3.12,
+          "latencyMsP99": 5,
+          "throughputBytesPerSec": 2846924.8,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 14170.4,
+              "latencyMsAvg": 3.15,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2833817.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 14234.4,
+              "latencyMsAvg": 3.16,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2846924.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 14370.4,
+              "latencyMsAvg": 3.07,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2873958.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 14205.6,
+              "latencyMsAvg": 3.12,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2841190.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 14340,
+              "latencyMsAvg": 3.07,
+              "latencyMsP99": 5,
+              "throughputBytesPerSec": 2867814.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         },
         {
           "framework": "fastify",
           "scenario": "param_get",
-          "reqPerSec": 19512,
-          "latencyMsAvg": 2.03,
+          "reqPerSec": 18952,
+          "latencyMsAvg": 2.08,
           "latencyMsP99": 3,
-          "throughputBytesPerSec": 3570688,
+          "throughputBytesPerSec": 3467468.8,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 18043.2,
+              "latencyMsAvg": 2.2,
+              "latencyMsP99": 4,
+              "throughputBytesPerSec": 3301171.2,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 19422.41,
+              "latencyMsAvg": 2.05,
+              "latencyMsP99": 3,
+              "throughputBytesPerSec": 3554713.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 19838.41,
+              "latencyMsAvg": 2.02,
+              "latencyMsP99": 2,
+              "throughputBytesPerSec": 3630080,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 18952,
+              "latencyMsAvg": 2.08,
+              "latencyMsP99": 3,
+              "throughputBytesPerSec": 3467468.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 17936,
+              "latencyMsAvg": 2.23,
+              "latencyMsP99": 4,
+              "throughputBytesPerSec": 3282329.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         },
         {
           "framework": "express",
           "scenario": "param_get",
-          "reqPerSec": 12354.4,
-          "latencyMsAvg": 3.36,
-          "latencyMsP99": 5,
-          "throughputBytesPerSec": 3039436.8,
+          "reqPerSec": 10876,
+          "latencyMsAvg": 4.19,
+          "latencyMsP99": 6,
+          "throughputBytesPerSec": 2675712,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 10828,
+              "latencyMsAvg": 4.21,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2664652.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 10876,
+              "latencyMsAvg": 4.19,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2675712,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 10906.4,
+              "latencyMsAvg": 4.17,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2683084.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 10645.6,
+              "latencyMsAvg": 4.31,
+              "latencyMsP99": 7,
+              "throughputBytesPerSec": 2619187.21,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 10920.8,
+              "latencyMsAvg": 4.14,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2686771.2,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         }
       ]
     },
@@ -84,35 +374,176 @@
         {
           "framework": "zent",
           "scenario": "json_post",
-          "reqPerSec": 13405.6,
-          "latencyMsAvg": 3.21,
-          "latencyMsP99": 5,
-          "throughputBytesPerSec": 2962432,
+          "reqPerSec": 12144.8,
+          "latencyMsAvg": 3.54,
+          "latencyMsP99": 6,
+          "throughputBytesPerSec": 2683904,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 12634.4,
+              "latencyMsAvg": 3.37,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2792038.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 12144.8,
+              "latencyMsAvg": 3.54,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2683904,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 11716,
+              "latencyMsAvg": 3.72,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2589286.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 12021.6,
+              "latencyMsAvg": 3.56,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2656870.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 12549.6,
+              "latencyMsAvg": 3.41,
+              "latencyMsP99": 6,
+              "throughputBytesPerSec": 2773196.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         },
         {
           "framework": "fastify",
           "scenario": "json_post",
-          "reqPerSec": 12485.6,
-          "latencyMsAvg": 3.37,
-          "latencyMsP99": 9,
-          "throughputBytesPerSec": 2534400,
+          "reqPerSec": 11756,
+          "latencyMsAvg": 3.68,
+          "latencyMsP99": 10,
+          "throughputBytesPerSec": 2386534.4,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 11799.2,
+              "latencyMsAvg": 3.68,
+              "latencyMsP99": 10,
+              "throughputBytesPerSec": 2395545.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 12040.8,
+              "latencyMsAvg": 3.53,
+              "latencyMsP99": 10,
+              "throughputBytesPerSec": 2443878.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 11756,
+              "latencyMsAvg": 3.64,
+              "latencyMsP99": 10,
+              "throughputBytesPerSec": 2386534.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 11128.8,
+              "latencyMsAvg": 3.94,
+              "latencyMsP99": 11,
+              "throughputBytesPerSec": 2259968,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 11154.4,
+              "latencyMsAvg": 3.96,
+              "latencyMsP99": 10,
+              "throughputBytesPerSec": 2264473.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         },
         {
           "framework": "express",
           "scenario": "json_post",
-          "reqPerSec": 9866.4,
-          "latencyMsAvg": 4.46,
-          "latencyMsP99": 6,
-          "throughputBytesPerSec": 2633932.8,
+          "reqPerSec": 9039.21,
+          "latencyMsAvg": 5.08,
+          "latencyMsP99": 8,
+          "throughputBytesPerSec": 2413977.6,
           "non2xx": 0,
           "errors": 0,
-          "timeouts": 0
+          "timeouts": 0,
+          "rounds": [
+            {
+              "reqPerSec": 8991.21,
+              "latencyMsAvg": 5.17,
+              "latencyMsP99": 7,
+              "throughputBytesPerSec": 2400460.8,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 9101.6,
+              "latencyMsAvg": 5.03,
+              "latencyMsP99": 7,
+              "throughputBytesPerSec": 2429952,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 9039.21,
+              "latencyMsAvg": 5.02,
+              "latencyMsP99": 8,
+              "throughputBytesPerSec": 2413977.6,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 9029.6,
+              "latencyMsAvg": 5.08,
+              "latencyMsP99": 8,
+              "throughputBytesPerSec": 2411110.4,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            },
+            {
+              "reqPerSec": 9080.8,
+              "latencyMsAvg": 5.1,
+              "latencyMsP99": 8,
+              "throughputBytesPerSec": 2423808,
+              "non2xx": 0,
+              "errors": 0,
+              "timeouts": 0
+            }
+          ]
         }
       ]
     }

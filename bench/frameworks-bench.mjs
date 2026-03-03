@@ -37,6 +37,9 @@ const BENCH_OPTIONS = {
   pipelining: 1,
 };
 
+const WARMUP_ROUNDS = 1;
+const MEASURED_ROUNDS = 5;
+
 function runAutocannon(url, scenario) {
   return new Promise((resolve, reject) => {
     const instance = autocannon({
@@ -70,6 +73,34 @@ function formatResult(raw) {
   };
 }
 
+function median(values) {
+  if (values.length === 0) return 0;
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 1) {
+    return sorted[mid];
+  }
+
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function summarizeRounds(rounds) {
+  return {
+    reqPerSec: Number(median(rounds.map((r) => r.reqPerSec)).toFixed(2)),
+    latencyMsAvg: Number(median(rounds.map((r) => r.latencyMsAvg)).toFixed(2)),
+    latencyMsP99: Number(median(rounds.map((r) => r.latencyMsP99)).toFixed(2)),
+    throughputBytesPerSec: Number(
+      median(rounds.map((r) => r.throughputBytesPerSec)).toFixed(2)
+    ),
+    non2xx: Number(median(rounds.map((r) => r.non2xx)).toFixed(2)),
+    errors: Number(median(rounds.map((r) => r.errors)).toFixed(2)),
+    timeouts: Number(median(rounds.map((r) => r.timeouts)).toFixed(2)),
+    rounds,
+  };
+}
+
 function toMarkdown(payload) {
   const lines = [];
   lines.push('# Framework Benchmark');
@@ -79,6 +110,8 @@ function toMarkdown(payload) {
   lines.push(
     `- settings: ${BENCH_OPTIONS.connections} conn / ${BENCH_OPTIONS.duration}s / pipeline ${BENCH_OPTIONS.pipelining}`
   );
+  lines.push(`- warmup rounds: ${WARMUP_ROUNDS}`);
+  lines.push(`- measured rounds: ${MEASURED_ROUNDS} (median)`);
   lines.push('');
 
   for (const scenario of payload.scenarios) {
@@ -184,13 +217,25 @@ async function benchmarkFramework(factory) {
     const results = [];
 
     for (const scenario of SCENARIOS) {
-      const raw = await runAutocannon(
-        `${server.address}${scenario.path}`,
-        scenario
-      );
+      for (let i = 0; i < WARMUP_ROUNDS; i++) {
+        await runAutocannon(`${server.address}${scenario.path}`, scenario);
+      }
+
+      const rounds = [];
+
+      for (let i = 0; i < MEASURED_ROUNDS; i++) {
+        const raw = await runAutocannon(
+          `${server.address}${scenario.path}`,
+          scenario
+        );
+        rounds.push(formatResult(raw));
+      }
+
+      const summarized = summarizeRounds(rounds);
+
       results.push({
         scenario: scenario.name,
-        ...formatResult(raw),
+        ...summarized,
       });
     }
 
@@ -228,6 +273,12 @@ async function main() {
   const payload = {
     generatedAt: new Date().toISOString(),
     node: process.version,
+    benchOptions: {
+      ...BENCH_OPTIONS,
+      warmupRounds: WARMUP_ROUNDS,
+      measuredRounds: MEASURED_ROUNDS,
+      aggregation: 'median',
+    },
     scenarios,
   };
 

@@ -28,6 +28,23 @@ export class RadixTree {
   }
 
   /**
+   * Concatena segmentos a partir de um índice sem criar slice intermediário.
+   * @param {string[]} segments
+   * @param {number} startIndex
+   * @returns {string}
+   */
+  #joinSegmentsFrom(segments, startIndex) {
+    if (startIndex >= segments.length) return '';
+
+    let result = segments[startIndex];
+    for (let i = startIndex + 1; i < segments.length; i++) {
+      result += `/${segments[i]}`;
+    }
+
+    return result;
+  }
+
+  /**
    * Registra uma rota na árvore.
    * @param {string} method - HTTP method (GET, POST, etc.)
    * @param {string} path - Route path (ex: /users/:id/posts)
@@ -133,7 +150,10 @@ export class RadixTree {
 
     // 3. Tenta match wildcard (prioridade mais baixa)
     if (node.wildcardChild) {
-      params[node.wildcardChild.wildcardName] = segments.slice(index).join('/');
+      params[node.wildcardChild.wildcardName] = this.#joinSegmentsFrom(
+        segments,
+        index
+      );
       return node.wildcardChild;
     }
 
