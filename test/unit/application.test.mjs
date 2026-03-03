@@ -994,45 +994,93 @@ describe('Application (Zent)', () => {
       expect(res.json()).toEqual({ grouped: true });
     });
 
-    it('should allow plugin to add middleware via scope.use()', async () => {
+    it('should apply scope.use() only to routes in same plugin scope', async () => {
       const app = zent();
       const order = [];
 
-      app.register(async (scope) => {
-        scope.use(async (ctx, next) => {
-          order.push('plugin-mw');
-          await next(ctx);
-        });
-      });
+      app.register(
+        async (scope) => {
+          scope.use(async (ctx, next) => {
+            order.push('plugin-mw');
+            await next(ctx);
+          });
+
+          scope.get('/scoped', (ctx) => {
+            order.push('scoped-handler');
+            ctx.res.json({ ok: true });
+          });
+        },
+        { prefix: '/api' }
+      );
 
       app.get('/x', (ctx) => {
-        order.push('handler');
+        order.push('root-handler');
         ctx.res.json({});
       });
 
+      await app.inject({ method: 'GET', url: '/api/scoped' });
       await app.inject({ method: 'GET', url: '/x' });
 
-      expect(order).toEqual(['plugin-mw', 'handler']);
+      expect(order).toEqual(['plugin-mw', 'scoped-handler', 'root-handler']);
     });
 
-    it('should allow plugin to add hooks via scope.addHook()', async () => {
+    it('should apply scope.addHook() only to routes in same plugin scope', async () => {
       const app = zent();
       const order = [];
 
-      app.register(async (scope) => {
-        scope.addHook('onRequest', async () => {
-          order.push('plugin-hook');
-        });
-      });
+      app.register(
+        async (scope) => {
+          scope.addHook('onRequest', async () => {
+            order.push('plugin-hook');
+          });
+
+          scope.get('/hooked', (ctx) => {
+            order.push('scoped-handler');
+            ctx.res.json({ ok: true });
+          });
+        },
+        { prefix: '/api' }
+      );
 
       app.get('/h', (ctx) => {
-        order.push('handler');
+        order.push('root-handler');
         ctx.res.json({});
       });
 
+      await app.inject({ method: 'GET', url: '/api/hooked' });
       await app.inject({ method: 'GET', url: '/h' });
 
-      expect(order).toEqual(['plugin-hook', 'handler']);
+      expect(order).toEqual(['plugin-hook', 'scoped-handler', 'root-handler']);
+    });
+
+    it('should inherit scope middlewares and hooks in nested plugins', async () => {
+      const app = zent();
+      const order = [];
+
+      app.register(
+        async (scope) => {
+          scope.use(async (ctx, next) => {
+            order.push('parent-mw');
+            await next(ctx);
+          });
+
+          scope.addHook('onRequest', async () => {
+            order.push('parent-hook');
+          });
+
+          scope.register(async (innerScope) => {
+            innerScope.get('/inner', (ctx) => {
+              order.push('inner-handler');
+              ctx.res.json({ ok: true });
+            });
+          });
+        },
+        { prefix: '/api' }
+      );
+
+      await app.inject({ method: 'GET', url: '/api/inner' });
+
+      expect(order).toEqual(['parent-hook', 'parent-mw', 'inner-handler']);
     });
 
     it('should allow plugin to set error handler via scope.setErrorHandler()', async () => {

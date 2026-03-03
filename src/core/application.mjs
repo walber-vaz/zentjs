@@ -12,7 +12,7 @@ import { createServer } from 'node:http';
 
 import { ErrorHandler } from '../errors/error-handler.mjs';
 import { NotFoundError } from '../errors/http-error.mjs';
-import { Lifecycle } from '../hooks/lifecycle.mjs';
+import { HOOK_PHASES, Lifecycle } from '../hooks/lifecycle.mjs';
 import { compose } from '../middleware/pipeline.mjs';
 import { PluginManager } from '../plugins/manager.mjs';
 import { Router } from '../router/index.mjs';
@@ -29,6 +29,8 @@ const HTTP_METHODS = [
 ];
 
 const SCOPE_DECORATORS = Symbol('scopeDecorators');
+const SCOPE_MIDDLEWARES = Symbol('scopeMiddlewares');
+const SCOPE_HOOKS = Symbol('scopeHooks');
 
 /**
  * Cria um registro de decorators com herança por escopo.
@@ -51,6 +53,52 @@ function createScopeDecoratorRegistry(parentRegistry = null) {
       values[name] = value;
     },
   };
+}
+
+/**
+ * Clona mapa de hooks preservando funções.
+ * @param {object | null | undefined} hooks
+ * @returns {object}
+ */
+function cloneHooksMap(hooks) {
+  const cloned = {};
+
+  if (!hooks) return cloned;
+
+  for (const [phase, fns] of Object.entries(hooks)) {
+    cloned[phase] = Array.isArray(fns) ? [...fns] : [fns];
+  }
+
+  return cloned;
+}
+
+/**
+ * Mescla hooks preservando ordem: base -> extra.
+ * @param {object | null | undefined} baseHooks
+ * @param {object | null | undefined} extraHooks
+ * @returns {object}
+ */
+function mergeHooksMap(baseHooks, extraHooks) {
+  const merged = cloneHooksMap(baseHooks);
+
+  if (!extraHooks) return merged;
+
+  for (const [phase, fns] of Object.entries(extraHooks)) {
+    const list = Array.isArray(fns) ? fns : [fns];
+    merged[phase] = [...(merged[phase] || []), ...list];
+  }
+
+  return merged;
+}
+
+/**
+ * Normaliza entrada de middlewares para array.
+ * @param {Function[] | Function | undefined} middlewares
+ * @returns {Function[]}
+ */
+function toMiddlewareArray(middlewares) {
+  if (!middlewares) return [];
+  return Array.isArray(middlewares) ? middlewares : [middlewares];
 }
 
 /**
@@ -318,6 +366,8 @@ export class Zent {
     const decoratorRegistry = createScopeDecoratorRegistry(
       opts[SCOPE_DECORATORS] || null
     );
+    const scopeMiddlewares = [...(opts[SCOPE_MIDDLEWARES] || [])];
+    const scopeHooks = cloneHooksMap(opts[SCOPE_HOOKS]);
 
     const scope = {};
 
@@ -332,28 +382,126 @@ export class Zent {
 
     const scopeHasDecorator = (name) => decoratorRegistry.has(name);
 
+    const scopeUse = (arg1, arg2) => {
+      if (typeof arg1 === 'function' && arg2 === undefined) {
+        scopeMiddlewares.push(arg1);
+        return scope;
+      }
+
+      if (typeof arg1 === 'string' && typeof arg2 === 'function') {
+        const localPrefix = normalizeMiddlewarePrefix(prefix + arg1);
+
+        scopeMiddlewares.push(async (ctx, next) => {
+          if (!pathMatchesPrefix(ctx.req.path, localPrefix)) {
+            return next();
+          }
+
+          return arg2(ctx, next);
+        });
+
+        return scope;
+      }
+
+      if (arg2 === undefined) {
+        throw new TypeError(
+          `Middleware must be a function, got ${typeof arg1}`
+        );
+      }
+
+      throw new TypeError(
+        'Invalid use() signature. Expected use(middleware) or use(prefix, middleware)'
+      );
+    };
+
+    const scopeAddHook = (phase, fn) => {
+      if (!HOOK_PHASES.includes(phase)) {
+        throw new Error(
+          `Invalid hook phase: "${phase}". Valid phases: ${HOOK_PHASES.join(', ')}`
+        );
+      }
+
+      if (typeof fn !== 'function') {
+        throw new TypeError(`Hook must be a function, got ${typeof fn}`);
+      }
+
+      const existing = scopeHooks[phase] || [];
+      scopeHooks[phase] = [...existing, fn];
+      return scope;
+    };
+
+    const withScopeRouteOpts = (routeOpts = {}) => {
+      const routeMiddlewares = toMiddlewareArray(routeOpts.middlewares);
+      const mergedMiddlewares = [...scopeMiddlewares, ...routeMiddlewares];
+      const mergedHooks = mergeHooksMap(scopeHooks, routeOpts.hooks || {});
+
+      return {
+        ...routeOpts,
+        middlewares: mergedMiddlewares,
+        hooks: mergedHooks,
+      };
+    };
+
+    const registerMethod =
+      (method) =>
+      (path, handler, routeOpts = {}) => {
+        return parent[method](
+          prefix + path,
+          handler,
+          withScopeRouteOpts(routeOpts)
+        );
+      };
+
+    const scopeRoute = (def) => {
+      const routeOpts = withScopeRouteOpts({
+        middlewares: def.middlewares,
+        hooks: def.hooks,
+      });
+
+      return parent.route({
+        ...def,
+        path: prefix + def.path,
+        middlewares: routeOpts.middlewares,
+        hooks: routeOpts.hooks,
+      });
+    };
+
+    const scopeAll = (path, handler, routeOpts = {}) => {
+      for (const method of HTTP_METHODS) {
+        scopeRoute({ method, path, handler, ...routeOpts });
+      }
+      return scope;
+    };
+
+    const scopeGroup = (groupPrefix, ...args) => {
+      const groupOpts = typeof args[0] === 'function' ? {} : args.shift() || {};
+      const callback = args[0];
+
+      const mergedGroupOpts = {
+        ...groupOpts,
+        middlewares: [
+          ...scopeMiddlewares,
+          ...toMiddlewareArray(groupOpts.middlewares),
+        ],
+        hooks: mergeHooksMap(scopeHooks, groupOpts.hooks || {}),
+      };
+
+      parent.group(prefix + groupPrefix, mergedGroupOpts, callback);
+      return scope;
+    };
+
     return Object.assign(scope, {
-      get: (path, handler, routeOpts) =>
-        parent.get(prefix + path, handler, routeOpts),
-      post: (path, handler, routeOpts) =>
-        parent.post(prefix + path, handler, routeOpts),
-      put: (path, handler, routeOpts) =>
-        parent.put(prefix + path, handler, routeOpts),
-      patch: (path, handler, routeOpts) =>
-        parent.patch(prefix + path, handler, routeOpts),
-      delete: (path, handler, routeOpts) =>
-        parent.delete(prefix + path, handler, routeOpts),
-      head: (path, handler, routeOpts) =>
-        parent.head(prefix + path, handler, routeOpts),
-      options: (path, handler, routeOpts) =>
-        parent.options(prefix + path, handler, routeOpts),
-      all: (path, handler, routeOpts) =>
-        parent.all(prefix + path, handler, routeOpts),
-      route: (def) => parent.route({ ...def, path: prefix + def.path }),
-      group: (groupPrefix, ...args) =>
-        parent.group(prefix + groupPrefix, ...args),
-      use: (...useArgs) => parent.use(...useArgs),
-      addHook: (phase, fn) => parent.addHook(phase, fn),
+      get: registerMethod('get'),
+      post: registerMethod('post'),
+      put: registerMethod('put'),
+      patch: registerMethod('patch'),
+      delete: registerMethod('delete'),
+      head: registerMethod('head'),
+      options: registerMethod('options'),
+      all: scopeAll,
+      route: scopeRoute,
+      group: scopeGroup,
+      use: scopeUse,
+      addHook: scopeAddHook,
       setErrorHandler: (fn) => parent.setErrorHandler(fn),
       setNotFoundHandler: (fn) => parent.setNotFoundHandler(fn),
       decorate: scopeDecorate,
@@ -363,6 +511,8 @@ export class Zent {
           ...(pluginOpts || {}),
           prefix: prefix + (pluginOpts?.prefix || ''),
           [SCOPE_DECORATORS]: decoratorRegistry,
+          [SCOPE_MIDDLEWARES]: [...scopeMiddlewares],
+          [SCOPE_HOOKS]: cloneHooksMap(scopeHooks),
         };
 
         parent.#plugins.register((scopedApp, resolvedOpts) => {
@@ -548,6 +698,9 @@ export class Zent {
 
       // 3. Set params no request
       ctx.req.params = params;
+
+      // 3.1 route-level onRequest hooks
+      await this.#runRouteHooks(route, 'onRequest', ctx);
 
       // 4. preParsing hooks
       await this.#lifecycle.run('preParsing', ctx);

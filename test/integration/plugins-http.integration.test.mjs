@@ -205,4 +205,52 @@ describe('Integration — plugins over real HTTP', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true, route: true });
   });
+
+  it('isolates plugin hooks/middlewares between sibling scopes over network', async () => {
+    app = zent();
+
+    app.register(
+      async (scope) => {
+        scope.use(async (ctx, next) => {
+          ctx.res.header('x-parent-mw', 'true');
+          await next();
+        });
+
+        scope.addHook('onRequest', async (ctx) => {
+          ctx.state.fromParentHook = true;
+        });
+
+        scope.register(async (inner) => {
+          inner.get('/child', (ctx) => {
+            ctx.res.json({
+              fromParentHook: Boolean(ctx.state.fromParentHook),
+            });
+          });
+        });
+      },
+      { prefix: '/a' }
+    );
+
+    app.register(
+      async (scope) => {
+        scope.get('/plain', (ctx) => {
+          ctx.res.json({ fromParentHook: Boolean(ctx.state.fromParentHook) });
+        });
+      },
+      { prefix: '/b' }
+    );
+
+    const address = await app.listen({ port: 0, host: '127.0.0.1' });
+
+    const responseA = await request(address).get('/a/child');
+    const responseB = await request(address).get('/b/plain');
+
+    expect(responseA.status).toBe(200);
+    expect(responseA.headers['x-parent-mw']).toBe('true');
+    expect(responseA.body).toEqual({ fromParentHook: true });
+
+    expect(responseB.status).toBe(200);
+    expect(responseB.headers['x-parent-mw']).toBeUndefined();
+    expect(responseB.body).toEqual({ fromParentHook: false });
+  });
 });
