@@ -35,6 +35,31 @@ app.get('/', (ctx) => {
 app.listen({ port: 3000 });
 ```
 
+## TypeScript (state + decorators)
+
+```ts
+import { zent } from '@zentjs/zentjs';
+
+type AppState = {
+  requestId?: string;
+};
+
+const app = zent<AppState>();
+
+const appWithAuth = app.decorate('authenticate', async (ctx) => {
+  const token = ctx.req.get('authorization');
+  if (!token) {
+    ctx.res.status(401).json({ message: 'Unauthorized' });
+  }
+});
+
+appWithAuth.get('/me', async (ctx) => {
+  ctx.state.requestId = crypto.randomUUID();
+  await ctx.app.authenticate(ctx);
+  return ctx.res.json({ requestId: ctx.state.requestId });
+});
+```
+
 ## Scripts úteis (desenvolvimento)
 
 ```bash
@@ -60,6 +85,7 @@ A documentação detalhada foi separada na pasta `docs/`:
 node examples/hello-world.mjs
 node examples/rest-api.mjs
 node examples/with-plugins.mjs
+node --experimental-strip-types examples/typed-app.ts
 ```
 
 ## Licença
