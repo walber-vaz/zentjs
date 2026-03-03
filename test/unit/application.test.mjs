@@ -1125,6 +1125,55 @@ describe('Application (Zent)', () => {
       expect(order).toEqual(['plugin-mw', 'scoped-handler', 'root-handler']);
     });
 
+    it('should support scope.use(prefix, middleware) with relative prefix', async () => {
+      const app = zent();
+
+      app.register(
+        async (scope) => {
+          scope.use('internal', async (ctx, next) => {
+            ctx.res.header('x-internal', 'yes');
+            await next();
+          });
+
+          scope.get('/internal/status', (ctx) => {
+            ctx.res.json({ ok: true });
+          });
+
+          scope.get('/public', (ctx) => {
+            ctx.res.json({ ok: true });
+          });
+        },
+        { prefix: '/api' }
+      );
+
+      const internal = await app.inject({
+        method: 'GET',
+        url: '/api/internal/status',
+      });
+      const publicRoute = await app.inject({
+        method: 'GET',
+        url: '/api/public',
+      });
+
+      expect(internal.headers['x-internal']).toBe('yes');
+      expect(publicRoute.headers['x-internal']).toBeUndefined();
+    });
+
+    it('should throw for invalid scope.use signatures', async () => {
+      const app = zent();
+
+      app.register(async (scope) => {
+        expect(() => scope.use('/api', 'not-fn')).toThrow(
+          'Invalid use() signature'
+        );
+        expect(() => scope.use(123)).toThrow(
+          'Middleware must be a function, got number'
+        );
+      });
+
+      await app.inject({ method: 'GET', url: '/' }).catch(() => {});
+    });
+
     it('should apply scope.addHook() only to routes in same plugin scope', async () => {
       const app = zent();
       const order = [];
@@ -1152,6 +1201,36 @@ describe('Application (Zent)', () => {
       await app.inject({ method: 'GET', url: '/h' });
 
       expect(order).toEqual(['plugin-hook', 'scoped-handler', 'root-handler']);
+    });
+
+    it('should throw for invalid scope.addHook inputs', async () => {
+      const app = zent();
+
+      app.register(async (scope) => {
+        expect(() => scope.addHook('invalid-phase', async () => {})).toThrow(
+          'Invalid hook phase'
+        );
+        expect(() => scope.addHook('onRequest', 'not-fn')).toThrow(
+          'Hook must be a function, got string'
+        );
+      });
+
+      await app.inject({ method: 'GET', url: '/' }).catch(() => {});
+    });
+
+    it('should allow scope.setNotFoundHandler()', async () => {
+      const app = zent();
+
+      app.register(async (scope) => {
+        scope.setNotFoundHandler((ctx) => {
+          ctx.res.status(404).json({ scoped: true, path: ctx.req.path });
+        });
+      });
+
+      const res = await app.inject({ method: 'GET', url: '/missing' });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toEqual({ scoped: true, path: '/missing' });
     });
 
     it('should inherit scope middlewares and hooks in nested plugins', async () => {

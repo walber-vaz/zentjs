@@ -404,7 +404,8 @@ export class Zent {
       }
 
       if (typeof arg1 === 'string' && typeof arg2 === 'function') {
-        const localPrefix = normalizeMiddlewarePrefix(prefix + arg1);
+        const scopedPrefix = `${prefix}${arg1.startsWith('/') ? '' : '/'}${arg1}`;
+        const localPrefix = normalizeMiddlewarePrefix(scopedPrefix);
 
         scopeMiddlewares.push(async (ctx, next) => {
           if (!pathMatchesPrefix(ctx.req.path, localPrefix)) {
