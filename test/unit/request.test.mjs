@@ -140,6 +140,14 @@ describe('ZentRequest', () => {
       expect(req.hostname).toBe('api.example.com');
     });
 
+    it('should fallback hostname to localhost when host header is missing', () => {
+      const req = new ZentRequest(
+        createRawRequest({ headers: {}, url: '/test' })
+      );
+
+      expect(req.hostname).toBe('localhost');
+    });
+
     it('should return http protocol for non-encrypted socket', () => {
       const req = new ZentRequest(
         createRawRequest({

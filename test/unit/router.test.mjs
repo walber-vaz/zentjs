@@ -245,5 +245,68 @@ describe('Router', () => {
       // /users (without /api prefix) should not exist
       expect(() => router.find('GET', '/users')).toThrow(NotFoundError);
     });
+
+    it('should handle group with null opts gracefully', () => {
+      const router = new Router();
+      const handler = () => 'ok';
+
+      router.group('/api', null, (group) => {
+        group.get('/items', handler);
+      });
+
+      const result = router.find('GET', '/api/items');
+
+      expect(result.route.handler).toBe(handler);
+    });
+
+    it('should handle nested group with null opts gracefully', () => {
+      const router = new Router();
+      const handler = () => 'nested';
+
+      router.group('/api', (api) => {
+        api.group('/v1', null, (v1) => {
+          v1.get('/data', handler);
+        });
+      });
+
+      const result = router.find('GET', '/api/v1/data');
+
+      expect(result.route.handler).toBe(handler);
+    });
+
+    it('should merge hooks when child provides single function instead of array', () => {
+      const router = new Router();
+      const parentHook = () => 'parent';
+      const childHook = () => 'child';
+      const handler = () => {};
+
+      router.group('/api', { hooks: { preHandler: [parentHook] } }, (api) => {
+        api.group('/v1', { hooks: { preHandler: childHook } }, (v1) => {
+          v1.get('/users', handler);
+        });
+      });
+
+      const result = router.find('GET', '/api/v1/users');
+
+      expect(result.route.hooks.preHandler).toEqual([parentHook, childHook]);
+    });
+
+    it('should merge hooks when child has a hook type not present in parent', () => {
+      const router = new Router();
+      const parentHook = () => 'pre';
+      const childHook = () => 'response';
+      const handler = () => {};
+
+      router.group('/api', { hooks: { preHandler: [parentHook] } }, (api) => {
+        api.group('/v1', { hooks: { onResponse: [childHook] } }, (v1) => {
+          v1.get('/users', handler);
+        });
+      });
+
+      const result = router.find('GET', '/api/v1/users');
+
+      expect(result.route.hooks.preHandler).toEqual([parentHook]);
+      expect(result.route.hooks.onResponse).toEqual([childHook]);
+    });
   });
 });

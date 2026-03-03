@@ -24,6 +24,7 @@
   - [Error Handling](#9-error-handling)
 - [Fluxo de uma Requisição](#fluxo-de-uma-requisição)
 - [API Pública](#api-pública)
+  - [Route Groups](#route-groups)
 - [Exemplos de Uso](#exemplos-de-uso)
 - [Roadmap de Implementação](#roadmap-de-implementação)
 - [Decisões Técnicas (ADRs)](#decisões-técnicas-adrs)

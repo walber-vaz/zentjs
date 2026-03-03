@@ -248,5 +248,68 @@ describe('RadixTree', () => {
 
       expect(tree.find('GET', '/users').route.handler).toBe(handler);
     });
+
+    it('should handle route where existing prefix is prefix of new segment', () => {
+      const tree = new RadixTree();
+      const h1 = () => 'user';
+      const h2 = () => 'users';
+      tree.add('GET', '/user', route(h1));
+      tree.add('GET', '/users', route(h2));
+
+      expect(tree.find('GET', '/user').route.handler).toBe(h1);
+      expect(tree.find('GET', '/users').route.handler).toBe(h2);
+    });
+
+    it('should handle route where new segment is prefix of existing (split + return splitNode)', () => {
+      const tree = new RadixTree();
+      const h1 = () => 'users';
+      const h2 = () => 'use';
+      tree.add('GET', '/users', route(h1));
+      tree.add('GET', '/use', route(h2));
+
+      expect(tree.find('GET', '/users').route.handler).toBe(h1);
+      expect(tree.find('GET', '/use').route.handler).toBe(h2);
+    });
+
+    it('should find routes through split nodes recursively', () => {
+      const tree = new RadixTree();
+      const h1 = () => 'users';
+      const h2 = () => 'uploads';
+      const h3 = () => 'usersList';
+      tree.add('GET', '/users', route(h1));
+      tree.add('GET', '/uploads', route(h2));
+      tree.add('GET', '/usersList', route(h3));
+
+      expect(tree.find('GET', '/users').route.handler).toBe(h1);
+      expect(tree.find('GET', '/uploads').route.handler).toBe(h2);
+      expect(tree.find('GET', '/usersList').route.handler).toBe(h3);
+    });
+
+    it('should return null from static child when segment is shorter than prefix', () => {
+      const tree = new RadixTree();
+      tree.add('GET', '/users', route());
+
+      // "/us" shares first char "u" with child prefix "users" but is shorter
+      expect(() => tree.find('GET', '/us')).toThrow(NotFoundError);
+    });
+
+    it('should handle trailing slash with ignoreTrailingSlash explicitly true', () => {
+      const tree = new RadixTree({ ignoreTrailingSlash: true });
+      tree.add('GET', '/items/', route());
+
+      expect(tree.find('GET', '/items').route.handler).toBe(handler);
+      expect(tree.find('GET', '/items/').route.handler).toBe(handler);
+    });
+
+    it('should handle adding trailing slash route when ignoreTrailingSlash is false', () => {
+      const tree = new RadixTree({ ignoreTrailingSlash: false });
+      const h1 = () => 'no-slash';
+      const h2 = () => 'with-slash';
+      tree.add('GET', '/items', route(h1));
+      tree.add('GET', '/items/', route(h2));
+
+      expect(tree.find('GET', '/items').route.handler).toBe(h1);
+      expect(tree.find('GET', '/items/').route.handler).toBe(h2);
+    });
   });
 });
