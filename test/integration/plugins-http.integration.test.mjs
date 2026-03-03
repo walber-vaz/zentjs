@@ -253,4 +253,26 @@ describe('Integration — plugins over real HTTP', () => {
     expect(responseB.headers['x-parent-mw']).toBeUndefined();
     expect(responseB.body).toEqual({ fromParentHook: false });
   });
+
+  it('returns 400 for malformed JSON body over network', async () => {
+    app = zent();
+    app.use(bodyParser());
+
+    app.post('/json', (ctx) => {
+      ctx.res.json({ ok: true, body: ctx.req.body });
+    });
+
+    const address = await app.listen({ port: 0, host: '127.0.0.1' });
+    const response = await request(address)
+      .post('/json')
+      .set('content-type', 'application/json')
+      .send('{invalid-json');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      statusCode: 400,
+      error: 'Bad Request',
+      message: 'Invalid JSON body',
+    });
+  });
 });

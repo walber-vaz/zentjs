@@ -14,6 +14,8 @@
  * @module plugins/body-parser
  */
 
+import { BadRequestError } from '../errors/http-error.mjs';
+
 /** Métodos HTTP que tipicamente não possuem body */
 const NO_BODY_METHODS = new Set(['GET', 'HEAD', 'DELETE', 'OPTIONS']);
 
@@ -106,7 +108,11 @@ function parseBody(buffer, contentType) {
 
     if (text.length === 0) return {};
 
-    return JSON.parse(text);
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new BadRequestError('Invalid JSON body');
+    }
   }
 
   if (type.includes('application/x-www-form-urlencoded')) {

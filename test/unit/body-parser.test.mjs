@@ -138,8 +138,12 @@ describe('bodyParser', () => {
         headers: { 'content-type': 'application/json' },
       });
 
-      // JSON.parse error → caught by error handler → 500
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Invalid JSON body',
+      });
     });
   });
 
