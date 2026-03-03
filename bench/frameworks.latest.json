@@ -1,0 +1,120 @@
+{
+  "generatedAt": "2026-03-03T14:03:24.909Z",
+  "node": "v24.14.0",
+  "scenarios": [
+    {
+      "name": "static_get",
+      "results": [
+        {
+          "framework": "zent",
+          "scenario": "static_get",
+          "reqPerSec": 12532,
+          "latencyMsAvg": 3.49,
+          "latencyMsP99": 6,
+          "throughputBytesPerSec": 2493747.21,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        },
+        {
+          "framework": "fastify",
+          "scenario": "static_get",
+          "reqPerSec": 17263.2,
+          "latencyMsAvg": 2.32,
+          "latencyMsP99": 4,
+          "throughputBytesPerSec": 3142246.4,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        },
+        {
+          "framework": "express",
+          "scenario": "static_get",
+          "reqPerSec": 10805.6,
+          "latencyMsAvg": 4.21,
+          "latencyMsP99": 6,
+          "throughputBytesPerSec": 2646630.4,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        }
+      ]
+    },
+    {
+      "name": "param_get",
+      "results": [
+        {
+          "framework": "zent",
+          "scenario": "param_get",
+          "reqPerSec": 13101.6,
+          "latencyMsAvg": 3.28,
+          "latencyMsP99": 5,
+          "throughputBytesPerSec": 2620006.4,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        },
+        {
+          "framework": "fastify",
+          "scenario": "param_get",
+          "reqPerSec": 17230.41,
+          "latencyMsAvg": 2.27,
+          "latencyMsP99": 4,
+          "throughputBytesPerSec": 3152486.4,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        },
+        {
+          "framework": "express",
+          "scenario": "param_get",
+          "reqPerSec": 10970.4,
+          "latencyMsAvg": 4.17,
+          "latencyMsP99": 6,
+          "throughputBytesPerSec": 2699059.2,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        }
+      ]
+    },
+    {
+      "name": "json_post",
+      "results": [
+        {
+          "framework": "zent",
+          "scenario": "json_post",
+          "reqPerSec": 11220,
+          "latencyMsAvg": 4.09,
+          "latencyMsP99": 5,
+          "throughputBytesPerSec": 2479513.6,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        },
+        {
+          "framework": "fastify",
+          "scenario": "json_post",
+          "reqPerSec": 11066.4,
+          "latencyMsAvg": 4,
+          "latencyMsP99": 10,
+          "throughputBytesPerSec": 2246348.8,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        },
+        {
+          "framework": "express",
+          "scenario": "json_post",
+          "reqPerSec": 8946.4,
+          "latencyMsAvg": 5.2,
+          "latencyMsP99": 7,
+          "throughputBytesPerSec": 2388582.4,
+          "non2xx": 0,
+          "errors": 0,
+          "timeouts": 0
+        }
+      ]
+    }
+  ]
+}
