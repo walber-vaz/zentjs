@@ -9,6 +9,10 @@
 ## Sumário
 
 - [Visão Geral](#visão-geral)
+- [Plano de Documentação](#plano-de-documentação)
+- [Estado da Documentação](#estado-da-documentação)
+- [Padrão Editorial](#padrão-editorial)
+- [Glossário de Termos](#glossário-de-termos)
 - [Motivação e Princípios](#motivação-e-princípios)
 - [Arquitetura Geral](#arquitetura-geral)
 - [Estrutura de Diretórios](#estrutura-de-diretórios)
@@ -26,9 +30,55 @@
 - [API Pública](#api-pública)
   - [Route Groups](#route-groups)
 - [Exemplos de Uso](#exemplos-de-uso)
+  - [Guia: Primeira API (CRUD básico)](#guia-primeira-api-crud-básico)
+  - [Guia: Autenticação por plugin](#guia-autenticação-por-plugin)
+  - [Guia: Métricas com requestMetrics](#guia-métricas-com-requestmetrics)
+  - [Guia: Testes com inject + Vitest](#guia-testes-com-inject--vitest)
 - [Roadmap de Implementação](#roadmap-de-implementação)
 - [Decisões Técnicas (ADRs)](#decisões-técnicas-adrs)
 - [Referências](#referências)
+
+---
+
+## Plano de Documentação
+
+A evolução da documentação agora segue etapas incrementais com checklist versionado.
+
+- Arquivo de acompanhamento: [docs/DOCUMENTATION_TODO.md](docs/DOCUMENTATION_TODO.md)
+- Status atual: **Etapa 5 concluída**
+- Próxima etapa: **Etapa 6** (revisão final e consistência)
+
+> Regra de ouro: documentar apenas comportamento já implementado no runtime.
+
+---
+
+## Estado da Documentação
+
+Este README é a referência principal do projeto e segue atualização incremental por etapas.
+
+- Fonte de controle: [docs/DOCUMENTATION_TODO.md](docs/DOCUMENTATION_TODO.md)
+- Escopo atual: estrutura editorial e padronização de linguagem
+- Política: exemplos e contratos devem refletir o runtime real em `src/`
+
+---
+
+## Padrão Editorial
+
+Para manter consistência entre seções, usar o padrão abaixo:
+
+- **API pública**: assinatura + parâmetros + retorno + exemplo mínimo executável
+- **Fluxos**: ordem de execução explícita (hooks, middlewares, handler)
+- **Erros**: classe/condição + status HTTP + formato de resposta
+- **Exemplos**: preferir snippets curtos, com foco em um conceito por bloco
+
+---
+
+## Glossário de Termos
+
+- **Handler**: função final da rota que produz o resultado da requisição
+- **Middleware**: função `async (ctx, next)` no pipeline (antes/depois do handler)
+- **Hook**: interceptador de fase específica do lifecycle (`onRequest`, `preHandler`, etc.)
+- **Plugin Scope**: escopo encapsulado criado por `register()`, com herança controlada
 
 ---
 
@@ -449,6 +499,22 @@ async function myMiddleware(ctx, next) {
 └──────────────────────────────────────────────────┘
 ```
 
+**Assinaturas suportadas na aplicação:**
+
+- `app.use(fn)` — middleware global
+- `app.use('/prefix', fn)` — middleware global com prefix match
+- `route options.middlewares` — middleware por rota
+- `group(..., { middlewares })` — middleware herdado por grupo/subgrupo
+
+**Ordem de execução efetiva:**
+
+1. Middlewares globais registrados via `app.use()`
+2. Middlewares herdados do escopo de plugin/grupo
+3. Middlewares específicos da rota
+4. Handler da rota (dentro do pipeline)
+
+> `preHandler` é executado imediatamente antes do handler, dentro do estágio final do pipeline.
+
 **Implementação do pipeline executor:**
 
 ```js
@@ -479,13 +545,20 @@ function compose(middlewares) {
 
 Inspirado diretamente no Fastify, com **encapsulamento de escopo**.
 
-**Arquivo:** `src/plugins/manager.mjs`
+**Arquivos:** `src/plugins/manager.mjs`, `src/core/application.mjs` (criação de escopo)
 
 **Conceito:**
 
 - Cada plugin recebe uma instância "encapsulada" do app
-- Decorators, hooks e middlewares registrados dentro de um plugin **não vazam** para o escopo pai
+- Decorators, hooks e middlewares de plugin são aplicados por escopo
 - Plugins podem ter dependências e são registrados de forma assíncrona
+
+**Garantias de encapsulamento no runtime atual:**
+
+- Pai → Filho: middlewares, hooks e decorators são herdados
+- Filho → Pai: alterações no escopo filho **não** voltam para o pai
+- Irmão A ↔ Irmão B: não compartilham decorators/hooks/middlewares locais
+- Prefixo: `register(plugin, { prefix })` é acumulativo em plugins aninhados
 
 **API:**
 
@@ -531,6 +604,42 @@ app.register(dbPlugin, { uri: 'mongodb://localhost/mydb' });
 │  │                                          │
 └─────────────────────────────────────────────┘
 ```
+
+**Herança de escopo (resumo):**
+
+| Recurso      | Pai → Filho | Filho → Pai | Irmãos |
+| ------------ | ----------- | ----------- | ------ |
+| Decorators   | Sim         | Não         | Não    |
+| Hooks        | Sim         | Não         | Não    |
+| Middlewares  | Sim         | Não         | Não    |
+| Prefixo rota | Sim         | Não         | Não    |
+
+**Exemplo com plugins irmãos (sem vazamento):**
+
+```js
+import { NotFoundError, zent } from 'zentjs';
+
+const app = zent();
+
+async function pluginA(scope) {
+  scope.decorate('token', 'A');
+  scope.get('/a', (ctx) => ctx.res.json({ token: scope.token }));
+}
+
+async function pluginB(scope) {
+  scope.get('/b', (ctx) => {
+    if (!scope.hasDecorator('token')) {
+      throw new NotFoundError('Decorator token is not available in plugin B');
+    }
+    return ctx.res.json({ token: scope.token });
+  });
+}
+
+app.register(pluginA, { prefix: '/v1' });
+app.register(pluginB, { prefix: '/v1' });
+```
+
+No exemplo acima, o decorator `token` criado em `pluginA` não fica visível em `pluginB`.
 
 **Propriedades do Plugin Manager:**
 
@@ -622,6 +731,23 @@ app.addHook('onError', async (ctx, error) => {
 });
 ```
 
+**Ordem de execução no runtime (quando a rota existe):**
+
+1. `onRequest` global → `onRequest` da rota
+2. `preParsing` global → `preParsing` da rota
+3. `preValidation` global → `preValidation` da rota
+4. Pipeline de middlewares
+5. `preHandler` global → `preHandler` da rota
+6. Handler da rota
+7. `onSend` global → `onSend` da rota (somente quando handler retorna payload e `ctx.res` ainda não foi enviado)
+8. `onResponse` global → `onResponse` da rota
+
+Se ocorrer erro em qualquer etapa:
+
+1. `onError` global
+2. `onError` da rota
+3. `setErrorHandler()` customizado (ou handler padrão)
+
 ---
 
 ### 8. Context (ctx)
@@ -708,6 +834,39 @@ app.get('/users/:id', async (ctx) => {
   "error": "Not Found",
   "message": "User not found"
 }
+```
+
+**Comportamento padrão do ErrorHandler:**
+
+- Se o erro já for `HttpError`, usa o `statusCode` e `toJSON()` da classe
+- Se for erro genérico, converte para `InternalServerError` (500)
+- Se `ctx.res.sent === true`, não envia resposta duplicada
+- Se `setErrorHandler()` falhar, faz fallback para o handler padrão
+
+**404 customizado com `setNotFoundHandler()`:**
+
+```js
+app.setNotFoundHandler(async (ctx) => {
+  return ctx.res.status(404).json({
+    statusCode: 404,
+    error: 'Not Found',
+    message: `Route ${ctx.req.method} ${ctx.req.path} not found`,
+  });
+});
+```
+
+Se o not-found handler não enviar resposta, o framework envia automaticamente o payload padrão de `NotFoundError`.
+
+**Falha comum de parsing (JSON inválido):**
+
+```js
+import { bodyParser, zent } from 'zentjs';
+
+const app = zent();
+app.use(bodyParser());
+
+app.post('/echo', (ctx) => ctx.res.json(ctx.req.body));
+// body JSON inválido -> BadRequestError(400) com message "Invalid JSON body"
 ```
 
 **Error handler customizado:**
@@ -822,44 +981,54 @@ const app = zent(options?);
 
 **Opções:**
 
-| Opção                 | Tipo      | Default | Descrição                          |
-| --------------------- | --------- | ------- | ---------------------------------- |
-| `logger`              | `boolean` | `false` | Logging básico de requisições      |
-| `ignoreTrailingSlash` | `boolean` | `true`  | `/foo` e `/foo/` são equivalentes  |
-| `caseSensitive`       | `boolean` | `false` | Paths case sensitive               |
-| `maxParamLength`      | `number`  | `200`   | Comprimento máximo de route params |
+| Opção                 | Tipo      | Default | Descrição                         |
+| --------------------- | --------- | ------- | --------------------------------- |
+| `ignoreTrailingSlash` | `boolean` | `true`  | `/foo` e `/foo/` são equivalentes |
+| `caseSensitive`       | `boolean` | `false` | Paths sensíveis a maiúsculas      |
+
+> As opções acima são as efetivamente consumidas pela aplicação no runtime atual.
 
 ### Métodos de roteamento
 
 ```js
-app.get(path, handler, [options]);
-app.post(path, handler, [options]);
-app.put(path, handler, [options]);
-app.patch(path, handler, [options]);
-app.delete(path, handler, [options]);
-app.head(path, handler, [options]);
-app.options(path, handler, [options]);
-app.all(path, handler, [options]); // Todos os métodos
-app.route(routeDefinition); // Definição completa
+app.get(path, handler, options?);
+app.post(path, handler, options?);
+app.put(path, handler, options?);
+app.patch(path, handler, options?);
+app.delete(path, handler, options?);
+app.head(path, handler, options?);
+app.options(path, handler, options?);
+app.all(path, handler, options?); // todos os métodos HTTP
+app.route(definition); // definição completa da rota
 ```
 
-**Route options:**
+**`options` por rota:**
 
 ```js
-app.post(
-  '/users',
-  async (ctx) => {
-    // ...
+{
+  middlewares: [authMiddleware],
+  hooks: {
+    onRequest: [fn],
+    preParsing: [fn],
+    preValidation: [fn],
+    preHandler: [fn],
+    onSend: [fn],
+    onResponse: [fn],
+    onError: [fn],
   },
-  {
-    middlewares: [authMiddleware], // Middlewares específicos da rota
-    hooks: {
-      preValidation: [validateBody],
-      preHandler: [ensureAuth],
-      onResponse: [logMiddleware],
-    },
-  }
-);
+}
+```
+
+**`app.route(definition)`**
+
+```js
+app.route({
+  method: 'POST',
+  path: '/users',
+  handler: createUser,
+  middlewares: [authMiddleware],
+  hooks: { preValidation: [validateBody] },
+});
 ```
 
 ### Middleware
@@ -868,6 +1037,11 @@ app.post(
 app.use(middleware); // Global
 app.use('/api', middleware); // Com prefixo
 ```
+
+Assinaturas válidas:
+
+- `use(middleware)`
+- `use(prefix, middleware)`
 
 ### Route Groups
 
@@ -909,9 +1083,18 @@ app.group('/api', { middlewares: [cors] }, (api) => {
 ### Plugins
 
 ```js
-app.register(plugin, options?)         // Registrar plugin
-app.decorate(name, value)              // Decorar instância
-app.hasDecorator(name)                 // Verificar decorator
+app.register(plugin, options?); // ex: { prefix: '/api' }
+app.decorate(name, value);
+app.hasDecorator(name);
+```
+
+Contrato de plugin:
+
+```js
+async function myPlugin(scope, opts) {
+  // scope possui API compatível com app
+  // e respeita encapsulamento por escopo
+}
 ```
 
 Métrica mínima por hooks (built-in):
@@ -933,17 +1116,38 @@ app.addHook('onResponse', metrics.onResponse);
 ### Lifecycle
 
 ```js
-app.addHook(hookName, hookFunction); // Adicionar hook
-app.setErrorHandler(handler); // Error handler customizado
-app.setNotFoundHandler(handler); // 404 handler customizado
+app.addHook(hookName, hookFunction);
+app.setErrorHandler(handler);
+app.setNotFoundHandler(handler);
 ```
+
+`hookName` suportados no lifecycle global:
+
+- `onRequest`
+- `preParsing`
+- `preValidation`
+- `preHandler`
+- `onSend`
+- `onResponse`
+- `onError`
 
 ### Servidor
 
 ```js
-app.listen({ port, host }, callback?)  // Iniciar servidor
-app.close()                            // Encerrar servidor
-app.inject(requestOptions)             // Teste sem rede
+await app.listen({ port, host }, callback?); // default: 3000 / 0.0.0.0
+await app.close();
+const response = await app.inject({ method, url, headers?, body? });
+```
+
+Resposta de `inject()`:
+
+```js
+{
+  statusCode,
+  headers,
+  body,
+  json() // helper para JSON.parse(body)
+}
 ```
 
 ---
@@ -969,10 +1173,17 @@ npm run bench
 npm run bench:save-baseline
 ```
 
+### Guias Práticos (Etapa 5)
+
+- CRUD básico: seção **Guia: Primeira API (CRUD básico)**
+- Autenticação por escopo: seção **Guia: Autenticação por plugin**
+- Métricas por requisição: seção **Guia: Métricas com requestMetrics**
+- Testes sem rede: seção **Guia: Testes com inject + Vitest**
+
 ### Hello World
 
 ```js
-import { UnauthorizedError, zent } from 'zentjs';
+import { zent } from 'zentjs';
 
 const app = zent();
 
@@ -983,7 +1194,7 @@ app.get('/', (ctx) => {
 app.listen({ port: 3000 });
 ```
 
-### REST API com CRUD
+### Guia: Primeira API (CRUD básico)
 
 ```js
 import { zent, bodyParser, NotFoundError } from 'zentjs';
@@ -1035,10 +1246,10 @@ app.delete('/users/:id', (ctx) => {
 app.listen({ port: 3000 });
 ```
 
-### Com Plugins
+### Guia: Autenticação por plugin
 
 ```js
-import { zent } from 'zentjs';
+import { UnauthorizedError, zent } from 'zentjs';
 
 // Plugin de autenticação
 async function authPlugin(app, opts) {
@@ -1082,7 +1293,31 @@ app.register(protectedRoutes, { prefix: '/api' });
 app.listen({ port: 3000 });
 ```
 
-### Teste com inject
+### Guia: Métricas com requestMetrics
+
+```js
+import { requestMetrics, zent } from 'zentjs';
+
+const app = zent();
+
+const metrics = requestMetrics({
+  onRecord: (record) => {
+    // { method, path, statusCode, durationMs }
+    console.log(record);
+  },
+});
+
+app.addHook('onRequest', metrics.onRequest);
+app.addHook('onResponse', metrics.onResponse);
+
+app.get('/health', (ctx) => {
+  return ctx.res.json({ status: 'ok' });
+});
+
+app.listen({ port: 3000 });
+```
+
+### Guia: Testes com inject + Vitest
 
 ```js
 import { describe, it, expect } from 'vitest';
