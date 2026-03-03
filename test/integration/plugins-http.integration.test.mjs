@@ -117,4 +117,22 @@ describe('Integration — plugins over real HTTP', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
   });
+
+  it('applies onSend hook to payload returned by handler over network', async () => {
+    app = zent();
+
+    app.addHook('onSend', async (ctx, payload) => {
+      return { ...payload, source: 'onSend' };
+    });
+
+    app.get('/onsend', () => {
+      return { ok: true };
+    });
+
+    const address = await app.listen({ port: 0, host: '127.0.0.1' });
+    const response = await request(address).get('/onsend');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true, source: 'onSend' });
+  });
 });

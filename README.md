@@ -1136,6 +1136,92 @@ Métricas atuais (03/03/2026):
 - Testes: `322/322` passando (`14` arquivos de teste)
 - Cobertura geral: `99.62%` statements · `96.79%` branches · `100%` functions · `99.61%` lines
 
+### Novo ciclo (pós-fases iniciais)
+
+Com as fases 1–5 concluídas, o próximo ciclo passa a ser guiado por **entregas pequenas e testáveis**, sempre com:
+
+1. Escopo fechado por fase
+2. Testes unitários obrigatórios
+3. Testes de integração quando houver impacto no fluxo HTTP real, plugins ou encapsulamento
+
+### Fase 6 — Paridade API x Runtime
+
+Objetivo: alinhar comportamento real com a API pública/documentação.
+
+| Item | Escopo |
+| --- | --- |
+| 6.1 | Executar `onSend` no dispatch da requisição (incluindo transformação de payload) |
+| 6.2 | Suporte completo a `app.use('/prefix', middleware)` |
+| 6.3 | Implementar `setNotFoundHandler()` na aplicação |
+| 6.4 | Garantir hooks de rota além de `preHandler` conforme contrato público |
+
+**Testes da fase 6:**
+
+- Unitários para `application`, `lifecycle`, `router`
+- Integração para validar `onSend`, middleware com prefixo e 404 customizado
+
+### Fase 7 — Encapsulamento real de plugins
+
+Objetivo: garantir isolamento entre escopos pai/filho/irmãos.
+
+| Item | Escopo |
+| --- | --- |
+| 7.1 | Isolar decorators por escopo de plugin |
+| 7.2 | Isolar hooks e middlewares com herança controlada pai → filho |
+| 7.3 | Validar que plugins irmãos não compartilham estado interno |
+| 7.4 | Fortalecer contratos de registro/carregamento em cascata |
+
+**Testes da fase 7:**
+
+- Unitários para `plugin-manager` e criação de escopo
+- Integração com plugins aninhados e cenários de não-vazamento
+
+### Fase 8 — Robustez de HTTP/erros
+
+Objetivo: endurecer comportamento em cenários de borda.
+
+| Item | Escopo |
+| --- | --- |
+| 8.1 | Revisar fluxo de erro para evitar respostas duplicadas |
+| 8.2 | Consolidar resposta de parse inválido de body (ex.: JSON inválido) |
+| 8.3 | Melhorar consistência entre `inject()` e servidor real |
+| 8.4 | Cobrir cenários limite de headers/body/status |
+
+**Testes da fase 8:**
+
+- Unitários focados em `error-handler`, `body-parser`, `response`
+- Integração para falhas reais de parsing e serialização
+
+### Fase 9 — Qualidade de documentação e DX
+
+Objetivo: manter documentação e uso prático sempre sincronizados.
+
+| Item | Escopo |
+| --- | --- |
+| 9.1 | Corrigir lint de markdown (fenced blocks com linguagem) |
+| 9.2 | Revisar README para refletir somente comportamento implementado |
+| 9.3 | Padronizar exemplos para cobrir APIs críticas do ciclo 6–8 |
+
+**Testes/validações da fase 9:**
+
+- `npm run lint`
+- Execução dos exemplos e smoke tests de rotas principais
+
+### Fase 10 — Performance e observabilidade mínima
+
+Objetivo: preparar baseline para evolução com segurança.
+
+| Item | Escopo |
+| --- | --- |
+| 10.1 | Benchmark básico de roteamento e pipeline |
+| 10.2 | Métricas mínimas por requisição (tempo e status) via hooks |
+| 10.3 | Cenários de carga leve para regressão de performance |
+
+**Testes/validações da fase 10:**
+
+- Benchmarks reproduzíveis versionados no repositório
+- Regressão comparativa entre versões do core
+
 ---
 
 ## Decisões Técnicas (ADRs)

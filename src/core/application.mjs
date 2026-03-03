@@ -415,6 +415,8 @@ export class Zent {
     const ctx = new Context(rawReq, rawRes, this);
 
     try {
+      let handlerResult;
+
       // 1. onRequest hooks
       await this.#lifecycle.run('onRequest', ctx);
 
@@ -449,12 +451,18 @@ export class Zent {
           }
         }
 
-        await route.handler(ctx);
+        handlerResult = await route.handler(ctx);
       };
 
       // 8. Execute pipeline
       const pipeline = compose(allMiddlewares);
       await pipeline(ctx, handler);
+
+      // 8.1 onSend + envio automático para payload retornado pelo handler
+      if (!ctx.res.sent && handlerResult !== undefined) {
+        const payload = await this.#lifecycle.run('onSend', ctx, handlerResult);
+        this.#sendPayload(ctx, payload);
+      }
 
       // 9. onResponse hooks (após a resposta ser preparada/enviada)
       await this.#lifecycle.run('onResponse', ctx);
@@ -471,6 +479,32 @@ export class Zent {
       // Error handler gera a resposta de erro
       await this.#errorHandler.handle(error, ctx);
     }
+  }
+
+  /**
+   * Envia payload retornado por handler quando a resposta ainda não foi enviada.
+   * @param {Context} ctx
+   * @param {*} payload
+   */
+  #sendPayload(ctx, payload) {
+    if (ctx.res.sent || payload === undefined) return;
+
+    if (payload === null) {
+      ctx.res.send('null');
+      return;
+    }
+
+    if (Buffer.isBuffer(payload) || typeof payload === 'string') {
+      ctx.res.send(payload);
+      return;
+    }
+
+    if (typeof payload === 'object') {
+      ctx.res.json(payload);
+      return;
+    }
+
+    ctx.res.send(String(payload));
   }
 }
 

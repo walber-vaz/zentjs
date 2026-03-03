@@ -262,6 +262,44 @@ describe('Application (Zent)', () => {
       expect(res.statusCode).toBe(500);
     });
 
+    it('should execute onSend hook and send transformed handler payload', async () => {
+      const app = zent();
+
+      app.addHook('onSend', async (ctx, payload) => {
+        return { ...payload, transformed: true };
+      });
+
+      app.get('/transform', () => {
+        return { ok: true };
+      });
+
+      const res = await app.inject({ method: 'GET', url: '/transform' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true, transformed: true });
+    });
+
+    it('should not execute onSend when response was already sent', async () => {
+      const app = zent();
+      let onSendCalled = false;
+
+      app.addHook('onSend', async () => {
+        onSendCalled = true;
+        return { changed: true };
+      });
+
+      app.get('/already-sent', (ctx) => {
+        ctx.res.json({ ok: true });
+        return { ignored: true };
+      });
+
+      const res = await app.inject({ method: 'GET', url: '/already-sent' });
+
+      expect(onSendCalled).toBe(false);
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
     it('should fallback to error handler when onError hook throws', async () => {
       const app = zent();
 
