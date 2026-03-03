@@ -53,6 +53,18 @@ function createRawResponse() {
   };
 }
 
+function createRawResponseThatEndsDuringSetHeader() {
+  const raw = createRawResponse();
+  const baseSetHeader = raw.setHeader.bind(raw);
+
+  raw.setHeader = (name, value) => {
+    baseSetHeader(name, value);
+    raw.writableEnded = true;
+  };
+
+  return raw;
+}
+
 describe('ZentResponse', () => {
   describe('status()', () => {
     it('should default to 200', () => {
@@ -269,6 +281,27 @@ describe('ZentResponse', () => {
 
       expect(raw._endCount).toBe(1);
       expect(raw._headers['Location']).toBeUndefined();
+    });
+
+    it('should ignore html after already sent', () => {
+      const raw = createRawResponse();
+      const res = new ZentResponse(raw);
+
+      res.send('first');
+      res.html('<h1>ignored</h1>');
+
+      expect(raw._endCount).toBe(1);
+      expect(raw._endData).toBe('first');
+    });
+
+    it('should not write head when response becomes sent before internal end', () => {
+      const raw = createRawResponseThatEndsDuringSetHeader();
+      const res = new ZentResponse(raw);
+
+      res.send('ignored');
+
+      expect(raw._headWriteCount).toBe(0);
+      expect(raw._endCount).toBe(0);
     });
   });
 });

@@ -124,6 +124,15 @@ describe('RadixTree', () => {
       expect(result.params).toEqual({ wildcard: 'documents/report.pdf' });
     });
 
+    it('should capture empty segment when wildcard receives trailing slash segment', () => {
+      const tree = new RadixTree({ ignoreTrailingSlash: false });
+      tree.add('GET', '/files/*path', route());
+
+      const result = tree.find('GET', '/files/');
+
+      expect(result.params).toEqual({ path: '' });
+    });
+
     it('should prefer static and param over wildcard', () => {
       const tree = new RadixTree();
       const staticH = () => 'static';

@@ -218,6 +218,46 @@ describe('Application (Zent)', () => {
         'Invalid use() signature'
       );
     });
+
+    it('should support prefixed middleware without leading slash', async () => {
+      const app = zent();
+      let called = 0;
+
+      app.use('api', async (ctx, next) => {
+        called += 1;
+        await next();
+      });
+
+      app.get('/api/users', (ctx) => {
+        ctx.res.json({ ok: true });
+      });
+
+      await app.inject({ method: 'GET', url: '/api/users' });
+
+      expect(called).toBe(1);
+    });
+
+    it('should treat slash prefix as global middleware scope', async () => {
+      const app = zent();
+      let called = 0;
+
+      app.use('   /   ', async (ctx, next) => {
+        called += 1;
+        await next();
+      });
+
+      app.get('/a', (ctx) => {
+        ctx.res.json({ ok: true });
+      });
+      app.get('/b', (ctx) => {
+        ctx.res.json({ ok: true });
+      });
+
+      await app.inject({ method: 'GET', url: '/a' });
+      await app.inject({ method: 'GET', url: '/b' });
+
+      expect(called).toBe(2);
+    });
   });
 
   describe('route-level middleware', () => {
@@ -247,6 +287,44 @@ describe('Application (Zent)', () => {
       await app.inject({ method: 'GET', url: '/test' });
 
       expect(order).toEqual(['global', 'route-mw', 'handler']);
+    });
+
+    it('should reuse compiled route pipeline across multiple requests', async () => {
+      const app = zent();
+      const order = [];
+
+      app.use(async (ctx, next) => {
+        order.push('global');
+        await next();
+      });
+
+      app.get(
+        '/cached',
+        (ctx) => {
+          order.push('handler');
+          ctx.res.json({ ok: true });
+        },
+        {
+          middlewares: [
+            async (ctx, next) => {
+              order.push('route-mw');
+              await next();
+            },
+          ],
+        }
+      );
+
+      await app.inject({ method: 'GET', url: '/cached' });
+      await app.inject({ method: 'GET', url: '/cached' });
+
+      expect(order).toEqual([
+        'global',
+        'route-mw',
+        'handler',
+        'global',
+        'route-mw',
+        'handler',
+      ]);
     });
   });
 
@@ -326,6 +404,43 @@ describe('Application (Zent)', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual({ ok: true, transformed: true });
+    });
+
+    it('should keep payload when onSend hook returns undefined', async () => {
+      const app = zent();
+
+      app.addHook('onSend', async () => {
+        return undefined;
+      });
+
+      app.get('/transform-undefined', () => {
+        return { ok: true };
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/transform-undefined',
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
+    it('should not send handler payload when onSend already sent response', async () => {
+      const app = zent();
+
+      app.addHook('onSend', async (ctx) => {
+        ctx.res.status(202).json({ fromHook: true });
+      });
+
+      app.get('/onsend-sent', () => {
+        return { ignored: true };
+      });
+
+      const res = await app.inject({ method: 'GET', url: '/onsend-sent' });
+
+      expect(res.statusCode).toBe(202);
+      expect(res.json()).toEqual({ fromHook: true });
     });
 
     it('should not execute onSend when response was already sent', async () => {
@@ -466,6 +581,24 @@ describe('Application (Zent)', () => {
         error: 'Not Found',
         message: 'Not Found',
       });
+    });
+
+    it('should execute global onResponse hook for custom not found flow', async () => {
+      const app = zent();
+      let onResponseCalled = false;
+
+      app.addHook('onResponse', async () => {
+        onResponseCalled = true;
+      });
+
+      app.setNotFoundHandler((ctx) => {
+        ctx.res.status(404).json({ ok: false });
+      });
+
+      const res = await app.inject({ method: 'GET', url: '/does-not-exist' });
+
+      expect(res.statusCode).toBe(404);
+      expect(onResponseCalled).toBe(true);
     });
 
     it('should not intercept method not allowed errors', async () => {
@@ -924,6 +1057,32 @@ describe('Application (Zent)', () => {
       expect(res.json()).toEqual({ ok: true, route: true });
     });
 
+    it('should keep payload when route-level onSend returns undefined', async () => {
+      const app = zent();
+
+      app.get(
+        '/route-onsend-undefined',
+        () => {
+          return { ok: true };
+        },
+        {
+          hooks: {
+            onSend: async () => {
+              return undefined;
+            },
+          },
+        }
+      );
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/route-onsend-undefined',
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
     it('should execute route-level onResponse hooks', async () => {
       const app = zent();
       const order = [];
@@ -1111,6 +1270,26 @@ describe('Application (Zent)', () => {
       expect(res.json()).toEqual({ grouped: true });
     });
 
+    it('should support scope.group() with null options fallback', async () => {
+      const app = zent();
+
+      app.register(
+        async (scope) => {
+          scope.group('/nullable', null, (group) => {
+            group.get('/ok', (ctx) => {
+              ctx.res.json({ ok: true });
+            });
+          });
+        },
+        { prefix: '/api' }
+      );
+
+      const res = await app.inject({ method: 'GET', url: '/api/nullable/ok' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
     it('should support scope.group() with single middleware function and merged hooks', async () => {
       const app = zent();
       const order = [];
@@ -1218,6 +1397,70 @@ describe('Application (Zent)', () => {
 
       expect(internal.headers['x-internal']).toBe('yes');
       expect(publicRoute.headers['x-internal']).toBeUndefined();
+    });
+
+    it('should support scope.use(prefix, middleware) with absolute prefix', async () => {
+      const app = zent();
+
+      app.register(
+        async (scope) => {
+          scope.use('/internal', async (ctx, next) => {
+            ctx.res.header('x-abs', 'yes');
+            await next();
+          });
+
+          scope.get('/internal/check', (ctx) => {
+            ctx.res.json({ ok: true });
+          });
+
+          scope.get('/public', (ctx) => {
+            ctx.res.json({ ok: true });
+          });
+        },
+        { prefix: '/api' }
+      );
+
+      const internal = await app.inject({
+        method: 'GET',
+        url: '/api/internal/check',
+      });
+      const publicRoute = await app.inject({
+        method: 'GET',
+        url: '/api/public',
+      });
+
+      expect(internal.headers['x-abs']).toBe('yes');
+      expect(publicRoute.headers['x-abs']).toBeUndefined();
+    });
+
+    it('should support scope.group with explicit options object', async () => {
+      const app = zent();
+
+      app.register(
+        async (scope) => {
+          scope.group(
+            '/opts',
+            {
+              hooks: {
+                preHandler: async (ctx) => {
+                  ctx.state.fromGroup = true;
+                },
+              },
+            },
+            (group) => {
+              group.get('/route', (ctx) => {
+                ctx.res.json({ fromGroup: ctx.state.fromGroup });
+              });
+            }
+          );
+        },
+        { prefix: '/api' }
+      );
+
+      const res = await app.inject({ method: 'GET', url: '/api/opts/route' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ fromGroup: true });
     });
 
     it('should throw for invalid scope.use signatures', async () => {
@@ -1371,6 +1614,22 @@ describe('Application (Zent)', () => {
         expect(() => scope.decorate('dup', 2)).toThrow(
           'Decorator "dup" already exists'
         );
+      });
+
+      await app.inject({ method: 'GET', url: '/' }).catch(() => {});
+    });
+
+    it('should throw when child scope decorates inherited decorator name', async () => {
+      const app = zent();
+
+      app.register(async (scope) => {
+        scope.decorate('shared', 1);
+
+        scope.register(async (childScope) => {
+          expect(() => childScope.decorate('shared', 2)).toThrow(
+            'Decorator "shared" already exists'
+          );
+        });
       });
 
       await app.inject({ method: 'GET', url: '/' }).catch(() => {});

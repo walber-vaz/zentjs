@@ -37,11 +37,32 @@ describe('ZentRequest', () => {
       expect(req.path).toBe('/users');
     });
 
+    it('should fallback path to root when url is missing', () => {
+      const req = new ZentRequest(createRawRequest({ url: undefined }));
+
+      expect(req.path).toBe('/');
+    });
+
+    it('should fallback path to root when url starts with query string', () => {
+      const req = new ZentRequest(createRawRequest({ url: '?page=1' }));
+
+      expect(req.path).toBe('/');
+    });
+
     it('should expose raw IncomingMessage via raw', () => {
       const rawReq = createRawRequest();
       const req = new ZentRequest(rawReq);
 
       expect(req.raw).toBe(rawReq);
+    });
+
+    it('should cache parsed path after first access', () => {
+      const raw = createRawRequest({ url: '/initial?x=1' });
+      const req = new ZentRequest(raw);
+
+      expect(req.path).toBe('/initial');
+      raw.url = '/changed?x=2';
+      expect(req.path).toBe('/initial');
     });
   });
 
@@ -58,6 +79,27 @@ describe('ZentRequest', () => {
       const req = new ZentRequest(createRawRequest({ url: '/users' }));
 
       expect(req.query).toEqual({});
+    });
+
+    it('should return empty object when url ends with question mark', () => {
+      const req = new ZentRequest(createRawRequest({ url: '/users?' }));
+
+      expect(req.query).toEqual({});
+    });
+
+    it('should return empty object when url is missing', () => {
+      const req = new ZentRequest(createRawRequest({ url: undefined }));
+
+      expect(req.query).toEqual({});
+    });
+
+    it('should cache parsed query after first access', () => {
+      const raw = createRawRequest({ url: '/search?q=first' });
+      const req = new ZentRequest(raw);
+
+      expect(req.query).toEqual({ q: 'first' });
+      raw.url = '/search?q=second';
+      expect(req.query).toEqual({ q: 'first' });
     });
   });
 
@@ -140,12 +182,61 @@ describe('ZentRequest', () => {
       expect(req.hostname).toBe('api.example.com');
     });
 
+    it('should expose hostname without port unchanged', () => {
+      const req = new ZentRequest(
+        createRawRequest({ headers: { host: 'service.internal' } })
+      );
+
+      expect(req.hostname).toBe('service.internal');
+    });
+
     it('should fallback hostname to localhost when host header is missing', () => {
       const req = new ZentRequest(
         createRawRequest({ headers: {}, url: '/test' })
       );
 
       expect(req.hostname).toBe('localhost');
+    });
+
+    it('should parse IPv6 hostname enclosed in brackets', () => {
+      const req = new ZentRequest(
+        createRawRequest({ headers: { host: '[::1]:3000' }, url: '/test' })
+      );
+
+      expect(req.hostname).toBe('[::1]');
+    });
+
+    it('should fallback hostname to localhost when host header array is empty', () => {
+      const req = new ZentRequest(
+        createRawRequest({ headers: { host: [] }, url: '/test' })
+      );
+
+      expect(req.hostname).toBe('localhost');
+    });
+
+    it('should resolve hostname when host header is a non-empty array', () => {
+      const req = new ZentRequest(
+        createRawRequest({ headers: { host: ['example.org:8080'] }, url: '/' })
+      );
+
+      expect(req.hostname).toBe('example.org');
+    });
+
+    it('should fallback to colon split for malformed IPv6 host', () => {
+      const req = new ZentRequest(
+        createRawRequest({ headers: { host: '[::1' }, url: '/test' })
+      );
+
+      expect(req.hostname).toBe('[');
+    });
+
+    it('should cache hostname after first access', () => {
+      const raw = createRawRequest({ headers: { host: 'first.local:3000' } });
+      const req = new ZentRequest(raw);
+
+      expect(req.hostname).toBe('first.local');
+      raw.headers.host = 'second.local:3000';
+      expect(req.hostname).toBe('first.local');
     });
 
     it('should return http protocol for non-encrypted socket', () => {
