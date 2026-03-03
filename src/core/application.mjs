@@ -127,6 +127,21 @@ function pathMatchesPrefix(path, prefix) {
 }
 
 /**
+ * Normaliza headers para lowercase simulando IncomingMessage.headers.
+ * @param {Record<string, string>} headers
+ * @returns {Record<string, string>}
+ */
+function normalizeInjectHeaders(headers = {}) {
+  const normalized = {};
+
+  for (const [name, value] of Object.entries(headers)) {
+    normalized[name.toLowerCase()] = value;
+  }
+
+  return normalized;
+}
+
+/**
  * Cria uma nova instância da aplicação ZentJS.
  *
  * @param {object} [opts]
@@ -601,24 +616,26 @@ export class Zent {
     await this.#loadPlugins();
 
     const { method = 'GET', url = '/', headers = {}, body } = opts;
+    const normalizedHeaders = normalizeInjectHeaders(headers);
 
     // Prepara body serializado
     let bodyStr;
     if (body !== undefined && body !== null) {
       if (typeof body === 'object') {
         bodyStr = JSON.stringify(body);
-        headers['content-type'] = headers['content-type'] || 'application/json';
+        normalizedHeaders['content-type'] =
+          normalizedHeaders['content-type'] || 'application/json';
       } else {
         bodyStr = String(body);
       }
-      headers['content-length'] = String(Buffer.byteLength(bodyStr));
+      normalizedHeaders['content-length'] = String(Buffer.byteLength(bodyStr));
     }
 
     // Mock do IncomingMessage
     const rawReq = {
       method: method.toUpperCase(),
       url,
-      headers: { host: 'localhost', ...headers },
+      headers: { host: 'localhost', ...normalizedHeaders },
       socket: { remoteAddress: '127.0.0.1', encrypted: false },
       body: bodyStr ?? null,
     };

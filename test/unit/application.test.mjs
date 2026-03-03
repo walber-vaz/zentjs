@@ -611,6 +611,49 @@ describe('Application (Zent)', () => {
 
       expect(res.headers['x-custom']).toBe('value');
     });
+
+    it('should normalize request header names in inject (case-insensitive)', async () => {
+      const app = zent();
+
+      app.get('/header', (ctx) => {
+        ctx.res.json({
+          authorization: ctx.req.get('authorization'),
+          contentType: ctx.req.get('content-type'),
+        });
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/header',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({
+        authorization: 'Bearer token',
+        contentType: 'application/json',
+      });
+    });
+
+    it('should respect Host header regardless of casing in inject', async () => {
+      const app = zent();
+
+      app.get('/host', (ctx) => {
+        ctx.res.json({ hostname: ctx.req.hostname });
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/host',
+        headers: { Host: 'api.local:8080' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ hostname: 'api.local' });
+    });
   });
 
   describe('listen() and close()', () => {
