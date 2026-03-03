@@ -91,4 +91,28 @@ describe('requestMetrics plugin', () => {
     expect(records).toHaveLength(1);
     expect(records[0].path).toBe('/api/a');
   });
+
+  it('should no-op onResponse when start time is missing', async () => {
+    const hooks = requestMetrics();
+    const ctx = {
+      state: {},
+      req: { method: 'GET', path: '/x' },
+      res: { statusCode: 200 },
+    };
+
+    await expect(hooks.onResponse(ctx)).resolves.toBeUndefined();
+  });
+
+  it('should work with default onRecord callback', async () => {
+    const hooks = requestMetrics();
+    const ctx = {
+      state: {},
+      req: { method: 'GET', path: '/x' },
+      res: { statusCode: 200 },
+    };
+
+    await hooks.onRequest(ctx);
+
+    await expect(hooks.onResponse(ctx)).resolves.toBeUndefined();
+  });
 });

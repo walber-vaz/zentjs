@@ -654,6 +654,50 @@ describe('Application (Zent)', () => {
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual({ hostname: 'api.local' });
     });
+
+    it('should send string payload returned by handler', async () => {
+      const app = zent();
+
+      app.get('/string', () => 'plain-text');
+
+      const res = await app.inject({ method: 'GET', url: '/string' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toBe('plain-text');
+    });
+
+    it('should send Buffer payload returned by handler', async () => {
+      const app = zent();
+
+      app.get('/buffer', () => Buffer.from('binary'));
+
+      const res = await app.inject({ method: 'GET', url: '/buffer' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toBe('binary');
+    });
+
+    it('should send null payload as string literal', async () => {
+      const app = zent();
+
+      app.get('/null', () => null);
+
+      const res = await app.inject({ method: 'GET', url: '/null' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toBe('null');
+    });
+
+    it('should stringify primitive payload returned by handler', async () => {
+      const app = zent();
+
+      app.get('/number', () => 42);
+
+      const res = await app.inject({ method: 'GET', url: '/number' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toBe('42');
+    });
   });
 
   describe('listen() and close()', () => {
