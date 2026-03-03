@@ -154,6 +154,32 @@ describe('PluginManager', () => {
       expect(receivedOpts).toEqual({ prefix: '/api', custom: 42 });
     });
 
+    it('should preserve symbol-based scope metadata in opts', async () => {
+      const pm = new PluginManager();
+      const scopeToken = Symbol('scope-token');
+      const scopeState = { inherited: true };
+      let createScopeOpts;
+      let pluginOpts;
+
+      pm.register(
+        async (app, opts) => {
+          pluginOpts = opts;
+        },
+        {
+          prefix: '/api',
+          [scopeToken]: scopeState,
+        }
+      );
+
+      await pm.load((opts) => {
+        createScopeOpts = opts;
+        return {};
+      });
+
+      expect(createScopeOpts[scopeToken]).toBe(scopeState);
+      expect(pluginOpts[scopeToken]).toBe(scopeState);
+    });
+
     it('should handle async plugins that return promises', async () => {
       const pm = new PluginManager();
       const order = [];
