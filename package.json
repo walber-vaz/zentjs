@@ -6,7 +6,6 @@
   "author": "Walber Vaz",
   "type": "module",
   "main": "./src/index.mjs",
-  "always-auth": true,
   "exports": {
     ".": "./src/index.mjs"
   },
