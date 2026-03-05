@@ -7,11 +7,6 @@ const MIME_JSON = 'application/json; charset=utf-8';
 const MIME_HTML = 'text/html; charset=utf-8';
 const MIME_TEXT = 'text/plain; charset=utf-8';
 
-/**
- * Wrapper sobre http.ServerResponse.
- * Responsabilidade única: construção e envio da resposta HTTP.
- * API fluente (chainable) para status e headers.
- */
 export class ZentResponse {
   #raw: ServerResponse;
   #statusCode: number = HttpStatus.OK;
@@ -20,24 +15,18 @@ export class ZentResponse {
     this.#raw = raw;
   }
 
-  /** Objeto ServerResponse original (escape hatch) */
   get raw(): ServerResponse {
     return this.#raw;
   }
 
-  /** @returns {boolean} Já enviou a resposta? */
   get sent(): boolean {
     return this.#raw.writableEnded;
   }
 
-  /** @returns {number} Status code atual */
   get statusCode(): number {
     return this.#statusCode;
   }
 
-  /**
-   * Define o status code.
-   */
   status(code: number): this {
     if (this.sent) return this;
 
@@ -45,9 +34,6 @@ export class ZentResponse {
     return this;
   }
 
-  /**
-   * Define um header.
-   */
   header(name: string, value: string | number | string[]): this {
     if (this.sent) return this;
 
@@ -55,17 +41,11 @@ export class ZentResponse {
     return this;
   }
 
-  /**
-   * Atalho para Content-Type.
-   */
   type(contentType: string): this {
     return this.header(CONTENT_TYPE, contentType);
   }
 
-  /**
-   * Envia resposta JSON.
-   */
-  json(data: any): void {
+  json(data: unknown): void {
     if (this.sent) return;
 
     const body = JSON.stringify(data);
@@ -73,9 +53,6 @@ export class ZentResponse {
     this.#end(body);
   }
 
-  /**
-   * Envia string ou Buffer.
-   */
   send(data: string | Buffer): void {
     if (this.sent) return;
 
@@ -85,9 +62,6 @@ export class ZentResponse {
     this.#end(data);
   }
 
-  /**
-   * Envia resposta HTML.
-   */
   html(data: string): void {
     if (this.sent) return;
 
@@ -95,9 +69,6 @@ export class ZentResponse {
     this.#end(data);
   }
 
-  /**
-   * Redireciona para outra URL.
-   */
   redirect(url: string, code: number = HttpStatus.FOUND): void {
     if (this.sent) return;
 
@@ -106,9 +77,6 @@ export class ZentResponse {
     this.#end();
   }
 
-  /**
-   * Resposta sem body.
-   */
   empty(code: number = HttpStatus.NO_CONTENT): void {
     if (this.sent) return;
 
@@ -116,9 +84,6 @@ export class ZentResponse {
     this.#end();
   }
 
-  /**
-   * Finaliza a resposta. Método interno compartilhado.
-   */
   #end(body?: string | Buffer): void {
     if (this.sent) return;
 

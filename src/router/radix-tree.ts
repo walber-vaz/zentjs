@@ -10,7 +10,9 @@ export class RadixTree<
   #ignoreTrailingSlash: boolean;
   #caseSensitive: boolean;
 
-  constructor(opts: any = {}) {
+  constructor(
+    opts: { ignoreTrailingSlash?: boolean; caseSensitive?: boolean } = {}
+  ) {
     this.#root = new Node<TState, TDecorators>();
     this.#ignoreTrailingSlash = opts.ignoreTrailingSlash ?? true;
     this.#caseSensitive = opts.caseSensitive ?? false;
@@ -27,7 +29,11 @@ export class RadixTree<
     return result;
   }
 
-  add(method: string, path: string, route: any): void {
+  add(
+    method: string,
+    path: string,
+    route: (...args: unknown[]) => unknown
+  ): void {
     const segments = this.#splitPath(this.#normalizePath(path));
     let current = this.#root;
 
@@ -62,7 +68,10 @@ export class RadixTree<
   find(
     method: string,
     path: string
-  ): { route: any; params: Record<string, string> } {
+  ): {
+    route: (...args: unknown[]) => unknown;
+    params: Record<string, string>;
+  } {
     const normalizedPath = this.#normalizePath(path);
     const segments = this.#splitPath(normalizedPath);
     const params: Record<string, string> = {};

@@ -19,7 +19,7 @@ export class HttpError extends Error {
   }
 
   toJSON() {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       statusCode: this.statusCode,
       error: this.error,
       message: this.message,

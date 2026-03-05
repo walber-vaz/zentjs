@@ -10,7 +10,7 @@ export class Node<
   paramName: string | null;
   wildcardChild: Node<TState, TDecorators> | null;
   wildcardName: string | null;
-  handlers: Map<string, any>;
+  handlers: Map<string, (...args: unknown[]) => unknown>;
 
   constructor(prefix = '') {
     this.prefix = prefix;
@@ -22,7 +22,7 @@ export class Node<
     this.handlers = new Map();
   }
 
-  addHandler(method: string, route: any) {
+  addHandler(method: string, route: (...args: unknown[]) => unknown) {
     this.handlers.set(method, route);
   }
 

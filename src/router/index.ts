@@ -25,7 +25,7 @@ export class Router<
 > {
   #tree: RadixTree<TState, TDecorators>;
 
-  constructor(opts: any = {}) {
+  constructor(opts: object = {}) {
     this.#tree = new RadixTree<TState, TDecorators>(opts);
   }
 
@@ -49,7 +49,10 @@ export class Router<
   find(
     method: string,
     path: string
-  ): { route: any; params: Record<string, string> } {
+  ): {
+    route: RouteDefinition<TState, TDecorators> | undefined;
+    params: Record<string, string>;
+  } {
     return this.#tree.find(method, path);
   }
 
@@ -72,12 +75,30 @@ export class Router<
     opts: GroupOptions<TState, TDecorators>,
     callback: (group: GroupApi<TState, TDecorators>) => void
   ): void;
-  group(prefix: string, ...args: any[]): void {
-    const opts = typeof args[0] === 'function' ? {} : args.shift() || {};
-    const callback = args[0];
+  group(
+    prefix: string,
+    ...args: [
+      (
+        | GroupOptions<TState, TDecorators>
+        | ((group: GroupApi<TState, TDecorators>) => void)
+      ),
+      ((group: GroupApi<TState, TDecorators>) => void)?,
+    ]
+  ): void {
+    let opts: GroupOptions<TState, TDecorators> = {};
+    let callback: ((group: GroupApi<TState, TDecorators>) => void) | undefined;
+
+    if (typeof args[0] === 'function') {
+      callback = args[0] as (group: GroupApi<TState, TDecorators>) => void;
+    } else {
+      opts = args[0] as GroupOptions<TState, TDecorators>;
+      callback = args[1] as (group: GroupApi<TState, TDecorators>) => void;
+    }
 
     const routeGroup = new RouteGroup<TState, TDecorators>(this, prefix, opts);
-    callback(routeGroup);
+    if (typeof callback === 'function') {
+      callback(routeGroup);
+    }
   }
 }
 
@@ -88,7 +109,7 @@ class RouteGroup<
   #router: Router<TState, TDecorators>;
   #prefix: string;
   #middlewares: Middleware<TState, TDecorators>[];
-  #hooks: any;
+  #hooks: Record<string, unknown[]>;
 
   constructor(
     router: Router<TState, TDecorators>,
@@ -102,7 +123,14 @@ class RouteGroup<
       : opts.middlewares
         ? [opts.middlewares]
         : [];
-    this.#hooks = opts.hooks || {};
+    this.#hooks = opts.hooks
+      ? Object.fromEntries(
+          Object.entries(opts.hooks).map(([key, val]) => [
+            key,
+            Array.isArray(val) ? val : [val],
+          ])
+        )
+      : {};
   }
 
   route(definition: RouteDefinition<TState, TDecorators>): void {
@@ -115,7 +143,15 @@ class RouteGroup<
         ...this.#middlewares,
         ...(Array.isArray(middlewares) ? middlewares : [middlewares]),
       ],
-      hooks: this.#mergeHooks(this.#hooks, hooks),
+      hooks: this.#mergeHooks(
+        this.#hooks,
+        Object.fromEntries(
+          Object.entries(hooks).map(([key, val]) => [
+            key,
+            Array.isArray(val) ? val : [val],
+          ])
+        )
+      ),
     });
   }
 
@@ -138,26 +174,64 @@ class RouteGroup<
     opts: GroupOptions<TState, TDecorators>,
     callback: (group: GroupApi<TState, TDecorators>) => void
   ): void;
-  group(prefix: string, ...args: any[]): void {
-    const opts = typeof args[0] === 'function' ? {} : args.shift() || {};
-    const callback = args[0];
+  group(
+    prefix: string,
+    ...args: [
+      (
+        | GroupOptions<TState, TDecorators>
+        | ((group: GroupApi<TState, TDecorators>) => void)
+      ),
+      ((group: GroupApi<TState, TDecorators>) => void)?,
+    ]
+  ): void {
+    let opts: GroupOptions<TState, TDecorators> = {};
+    let callback: (group: GroupApi<TState, TDecorators>) => void;
+
+    if (typeof args[0] === 'function') {
+      callback = args[0] as (group: GroupApi<TState, TDecorators>) => void;
+    } else {
+      opts = args[0] as GroupOptions<TState, TDecorators>;
+      callback = args[1] as (group: GroupApi<TState, TDecorators>) => void;
+    }
 
     const fullPrefix = this.#prefix + prefix.replace(/\/+$/, '');
-    const mergedOpts = {
-      middlewares: [...this.#middlewares, ...(opts.middlewares || [])],
-      hooks: this.#mergeHooks(this.#hooks, opts.hooks || {}),
+    const mergedOpts: GroupOptions<TState, TDecorators> = {
+      middlewares: [
+        ...this.#middlewares,
+        ...(Array.isArray(opts.middlewares)
+          ? opts.middlewares
+          : opts.middlewares
+            ? [opts.middlewares]
+            : []),
+      ],
+      hooks: this.#mergeHooks(
+        this.#hooks,
+        opts.hooks
+          ? Object.fromEntries(
+              Object.entries(opts.hooks).map(([key, val]) => [
+                key,
+                Array.isArray(val) ? val : [val],
+              ])
+            )
+          : {}
+      ),
     };
 
     const subGroup = new RouteGroup<TState, TDecorators>(
-      this.#router as any,
+      this.#router,
       fullPrefix,
       mergedOpts
     );
-    callback(subGroup);
+    if (typeof callback === 'function') {
+      callback(subGroup);
+    }
   }
 
-  #mergeHooks(parent: any, child: any): any {
-    const merged = { ...parent };
+  #mergeHooks(
+    parent: Record<string, unknown[]>,
+    child: Record<string, unknown[]>
+  ): Record<string, unknown[]> {
+    const merged: Record<string, unknown[]> = { ...parent };
     for (const [key, fns] of Object.entries(child)) {
       merged[key] = [
         ...(merged[key] || []),
@@ -218,7 +292,6 @@ class RouteGroup<
   }
 }
 
-// Add methods to Router prototype
 for (const method of HTTP_METHODS) {
   (Router.prototype as any)[method.toLowerCase()] = function (
     path: string,

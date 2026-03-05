@@ -1,7 +1,6 @@
 import { Context } from '../core/context';
 import { AnyDecorators, AnyState } from '../types/util';
 
-/** Fases válidas do lifecycle */
 export const HOOK_PHASES = Object.freeze([
   'onRequest',
   'preParsing',
@@ -17,17 +16,15 @@ export type HookPhase = (typeof HOOK_PHASES)[number];
 export type LifecycleHookFn<
   TState extends AnyState,
   TDecorators extends AnyDecorators,
-> = (ctx: Context<TState, TDecorators>, ...args: any[]) => any | Promise<any>;
+> = (
+  ctx: Context<TState, TDecorators>,
+  ...args: unknown[]
+) => unknown | Promise<unknown>;
 
-/**
- * Gerenciador de hooks de lifecycle.
- * Responsabilidade única: registrar e executar hooks por fase.
- */
 export class Lifecycle<
   TState extends AnyState = AnyState,
   TDecorators extends AnyDecorators = AnyDecorators,
 > {
-  /** @type {Map<string, LifecycleHookFn<TState, TDecorators>[]>} */
   #hooks: Map<HookPhase, LifecycleHookFn<TState, TDecorators>[]>;
 
   constructor() {
@@ -38,14 +35,6 @@ export class Lifecycle<
     }
   }
 
-  /**
-   * Registra um hook para uma fase do lifecycle.
-   *
-   * @param {HookPhase} phase - Nome da fase (ex: 'onRequest', 'preHandler')
-   * @param {LifecycleHookFn<TState, TDecorators>} fn - Função do hook
-   * @throws {Error} Se a fase não for válida
-   * @throws {TypeError} Se fn não for uma função
-   */
   addHook(phase: HookPhase, fn: LifecycleHookFn<TState, TDecorators>) {
     if (!this.#hooks.has(phase)) {
       throw new Error(
@@ -60,22 +49,10 @@ export class Lifecycle<
     this.#hooks.get(phase)!.push(fn);
   }
 
-  /**
-   * Retorna os hooks registrados para uma fase.
-   *
-   * @param {HookPhase} phase
-   * @returns {LifecycleHookFn<TState, TDecorators>[]}
-   */
   getHooks(phase: HookPhase): LifecycleHookFn<TState, TDecorators>[] {
     return this.#hooks.get(phase) || [];
   }
 
-  /**
-   * Verifica se uma fase possui hooks registrados.
-   *
-   * @param {HookPhase} phase
-   * @returns {boolean}
-   */
   hasHooks(phase: HookPhase): boolean {
     const hooks = this.#hooks.get(phase);
     return hooks !== undefined && hooks.length > 0;
@@ -84,8 +61,8 @@ export class Lifecycle<
   async run(
     phase: HookPhase,
     ctx: Context<TState, TDecorators>,
-    ...args: any[]
-  ): Promise<any> {
+    ...args: unknown[]
+  ): Promise<unknown> {
     const hooks = this.getHooks(phase);
 
     if (hooks.length === 0) return args[0];
@@ -95,29 +72,29 @@ export class Lifecycle<
     }
 
     if (phase === 'onError') {
-      return this.#runOnError(hooks, ctx, args[0]);
+      if (args[0] instanceof Error) {
+        return this.#runOnError(hooks, ctx, args[0]);
+      } else {
+        throw new TypeError(
+          'onError hook expects an Error instance as its argument'
+        );
+      }
     }
 
-    // Fases normais: onRequest, preParsing, preValidation, preHandler, onResponse
     for (const hook of hooks) {
       await hook(ctx);
     }
   }
 
-  /**
-   * Executa hooks de onSend encadeando o payload.
-   * Cada hook pode retornar um payload modificado.
-   */
   async #runOnSend(
     hooks: LifecycleHookFn<TState, TDecorators>[],
     ctx: Context<TState, TDecorators>,
-    payload: any
-  ): Promise<any> {
+    payload: unknown
+  ): Promise<unknown> {
     let current = payload;
 
     for (const hook of hooks) {
       const result = await hook(ctx, current);
-      // Se o hook retornar algo, substitui o payload
       if (result !== undefined) {
         current = result;
       }
@@ -126,10 +103,6 @@ export class Lifecycle<
     return current;
   }
 
-  /**
-   * Executa hooks de onError sequencialmente.
-   * Cada hook recebe (ctx, error).
-   */
   async #runOnError(
     hooks: LifecycleHookFn<TState, TDecorators>[],
     ctx: Context<TState, TDecorators>,
@@ -140,12 +113,6 @@ export class Lifecycle<
     }
   }
 
-  /**
-   * Cria uma cópia do lifecycle com os mesmos hooks.
-   * Útil para encapsulamento de plugins (herança de escopo pai).
-   *
-   * @returns {Lifecycle<TState, TDecorators>}
-   */
   clone(): Lifecycle<TState, TDecorators> {
     const cloned = new Lifecycle<TState, TDecorators>();
 

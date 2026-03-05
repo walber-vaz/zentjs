@@ -1,85 +1,83 @@
-/**
- * bodyParser — Middleware built-in para parsing do body da requisição.
- *
- * Suporta:
- *   - application/json
- *   - text/plain
- *   - application/x-www-form-urlencoded
- *
- * Não parseia automaticamente requests sem body (GET, HEAD, DELETE, OPTIONS).
- * O body é populado em ctx.req.body após parsing.
- *
- * Decisão (ADR-007): Lazy body parsing — exige middleware explícito.
- *
- * @module plugins/body-parser
- */
+import { IncomingMessage } from 'http';
 
-import { BadRequestError } from '../errors/http-error';
+import { BadRequestError, HttpError } from '../errors/http-error';
 import { Middleware } from '../types/router';
 import { AnyDecorators, AnyState } from '../types/util';
 
-/** Métodos HTTP que tipicamente não possuem body */
 const NO_BODY_METHODS = new Set(['GET', 'HEAD', 'DELETE', 'OPTIONS']);
 
-/** Limite padrão de tamanho do body: 1 MB */
 const DEFAULT_LIMIT = 1024 * 1024;
 
 export interface BodyParserOptions {
   limit?: number;
 }
 
-/**
- * Lê o body bruto da requisição como Buffer.
- */
-function readRawBody(raw: any, limit: number): Promise<Buffer> {
-  // inject() mock — body já é string, não é stream
-  if (raw.body !== undefined && raw.body !== null) {
+function isIncomingMessage(
+  raw: IncomingMessage | { body?: string | Buffer }
+): raw is IncomingMessage {
+  return (
+    raw instanceof IncomingMessage ||
+    (typeof (raw as unknown as { on?: unknown; emit?: unknown })?.on ===
+      'function' &&
+      typeof (raw as unknown as { on?: unknown; emit?: unknown })?.emit ===
+        'function')
+  );
+}
+
+function readRawBody(
+  raw: IncomingMessage | { body?: string | Buffer },
+  limit: number
+): Promise<Buffer> {
+  if ('body' in raw && raw.body !== undefined && raw.body !== null) {
     const buf = Buffer.from(raw.body);
 
     if (buf.length > limit) {
-      const error: any = new Error(`Body exceeds size limit of ${limit} bytes`);
-      error.statusCode = 413;
+      const error = new HttpError(
+        413,
+        `Body exceeds size limit of ${limit} bytes`
+      );
       throw error;
     }
 
     return Promise.resolve(buf);
   }
 
-  // Stream real (node:http IncomingMessage)
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
 
-    raw.on('data', (chunk: Buffer) => {
-      size += chunk.length;
+    if (isIncomingMessage(raw)) {
+      raw.on('data', (chunk: Buffer) => {
+        size += chunk.length;
 
-      if (size > limit) {
-        raw.destroy();
-        const error: any = new Error(
-          `Body exceeds size limit of ${limit} bytes`
-        );
-        error.statusCode = 413;
-        reject(error);
-        return;
-      }
+        if (size > limit) {
+          raw.destroy();
+          const error = new HttpError(
+            413,
+            `Body exceeds size limit of ${limit} bytes`
+          );
+          error.statusCode = 413;
+          reject(error);
+          return;
+        }
 
-      chunks.push(chunk);
-    });
+        chunks.push(chunk);
+      });
 
-    raw.on('end', () => {
-      resolve(Buffer.concat(chunks));
-    });
+      raw.on('end', () => {
+        resolve(Buffer.concat(chunks));
+      });
 
-    raw.on('error', (err: Error) => {
-      reject(err);
-    });
+      raw.on('error', (err: Error) => {
+        reject(err);
+      });
+    } else {
+      reject(new Error('Invalid raw body type'));
+    }
   });
 }
 
-/**
- * Parseia o body de acordo com o Content-Type.
- */
-function parseBody(buffer: Buffer, contentType: string): any {
+function parseBody(buffer: Buffer, contentType: string) {
   const type = (contentType || '').toLowerCase();
 
   if (type.includes('application/json')) {
@@ -103,13 +101,9 @@ function parseBody(buffer: Buffer, contentType: string): any {
     return buffer.toString('utf-8');
   }
 
-  // Tipo desconhecido — retorna buffer como string
   return buffer.toString('utf-8');
 }
 
-/**
- * Cria o middleware bodyParser.
- */
 export function bodyParser<
   TState extends AnyState = AnyState,
   TDecorators extends AnyDecorators = AnyDecorators,
@@ -117,14 +111,12 @@ export function bodyParser<
   const limit = opts.limit ?? DEFAULT_LIMIT;
 
   return async function bodyParserMiddleware(ctx, next) {
-    // Pula métodos sem body
     if (NO_BODY_METHODS.has(ctx.req.method)) {
       return next();
     }
 
     const contentType = (ctx.req.get('content-type') as string) || '';
 
-    // Sem content-type — pula parsing
     if (!contentType) {
       return next();
     }

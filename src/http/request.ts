@@ -41,17 +41,13 @@ function resolveHostnameFromHostHeader(
   return rawHost.slice(0, colonIndex);
 }
 
-/**
- * Wrapper sobre http.IncomingMessage.
- * Responsabilidade única: leitura e parse dos dados da requisição.
- */
 export class ZentRequest {
   #raw: IncomingMessage;
   #pathCache: string | undefined;
   #queryCache: Record<string, string> | undefined;
   #hostnameCache: string | undefined;
   #params: Record<string, string> = {};
-  #body: any = undefined;
+  #body: unknown = undefined;
 
   constructor(raw: IncomingMessage) {
     this.#raw = raw;
@@ -60,22 +56,18 @@ export class ZentRequest {
     this.#hostnameCache = undefined;
   }
 
-  /** Objeto IncomingMessage original (escape hatch) */
   get raw(): IncomingMessage {
     return this.#raw;
   }
 
-  /** @returns {string} Método HTTP em uppercase */
   get method(): string {
     return this.#raw.method!;
   }
 
-  /** @returns {string} URL completa (path + query) */
   get url(): string {
     return this.#raw.url!;
   }
 
-  /** @returns {string} Path sem query string */
   get path(): string {
     if (this.#pathCache === undefined) {
       this.#pathCache = resolvePathFromUrl(this.#raw.url);
@@ -84,7 +76,6 @@ export class ZentRequest {
     return this.#pathCache;
   }
 
-  /** @returns {Record<string, string>} Query params como objeto */
   get query(): Record<string, string> {
     if (this.#queryCache === undefined) {
       this.#queryCache = resolveQueryFromUrl(this.#raw.url);
@@ -93,12 +84,10 @@ export class ZentRequest {
     return this.#queryCache;
   }
 
-  /** @returns {import('node:http').IncomingHttpHeaders} */
   get headers(): IncomingHttpHeaders {
     return this.#raw.headers;
   }
 
-  /** @returns {Record<string, string>} Route params populados pelo router */
   get params(): Record<string, string> {
     return this.#params;
   }
@@ -107,12 +96,10 @@ export class ZentRequest {
     this.#params = value;
   }
 
-  /** @returns {string} IP do cliente */
   get ip(): string | undefined {
     return this.#raw.socket.remoteAddress;
   }
 
-  /** @returns {string} Hostname da requisição */
   get hostname(): string {
     if (this.#hostnameCache === undefined) {
       this.#hostnameCache = resolveHostnameFromHostHeader(
@@ -123,30 +110,29 @@ export class ZentRequest {
     return this.#hostnameCache;
   }
 
-  /** @returns {string} 'http' ou 'https' */
   get protocol(): string {
-    return (this.#raw.socket as any).encrypted ? 'https' : 'http';
+    const socket = this.#raw.socket;
+    if (
+      'encrypted' in socket &&
+      typeof (socket as { encrypted?: boolean }).encrypted === 'boolean'
+    ) {
+      return (socket as { encrypted: boolean }).encrypted ? 'https' : 'http';
+    }
+    return 'http';
   }
 
-  /** @returns {*} Body parseado (definido pelo body-parser middleware) */
-  get body(): any {
+  get body(): unknown {
     return this.#body;
   }
 
-  set body(value: any) {
+  set body(value: unknown) {
     this.#body = value;
   }
 
-  /**
-   * Retorna o valor de um header (case-insensitive).
-   */
   get(name: string): string | string[] | undefined {
     return this.#raw.headers[name.toLowerCase()];
   }
 
-  /**
-   * Verifica se o Content-Type bate com o tipo informado.
-   */
   is(type: string): boolean {
     const contentType = (this.get('content-type') as string) || '';
     return contentType.includes(type);

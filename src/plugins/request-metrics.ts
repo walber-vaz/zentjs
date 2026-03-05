@@ -1,22 +1,7 @@
-/**
- * requestMetrics — Plugin de observabilidade mínima baseado em hooks.
- *
- * Registra hooks de onRequest/onResponse para capturar:
- * - method
- * - path
- * - statusCode
- * - durationMs
- *
- * @module plugins/request-metrics
- */
-
 import { Context } from '../core/context';
 import { ZentPluginScope } from '../types/plugin';
 import { AnyDecorators, AnyState, MaybePromise } from '../types/util';
 
-/**
- * @typedef {object} RequestMetricRecord
- */
 export interface RequestMetricRecord {
   method: string;
   path: string;
@@ -24,9 +9,6 @@ export interface RequestMetricRecord {
   durationMs: number;
 }
 
-/**
- * @typedef {object} RequestMetricsOptions
- */
 export interface RequestMetricsOptions<
   TState extends AnyState = AnyState,
   TDecorators extends AnyDecorators = AnyDecorators,
@@ -39,9 +21,6 @@ export interface RequestMetricsOptions<
   stateKey?: string;
 }
 
-/**
- * Cria hooks para coletar métricas por requisição.
- */
 export function requestMetrics<
   TState extends AnyState = AnyState,
   TDecorators extends AnyDecorators = AnyDecorators,
@@ -52,11 +31,11 @@ export function requestMetrics<
 
   return {
     async onRequest(ctx: Context<TState, TDecorators>) {
-      (ctx.state as any)[stateKey] = clock();
+      (ctx.state as Record<string, unknown>)[stateKey] = clock();
     },
 
     async onResponse(ctx: Context<TState, TDecorators>) {
-      const start = (ctx.state as any)[stateKey];
+      const start = (ctx.state as Record<string, unknown>)[stateKey];
       if (typeof start !== 'bigint') return;
 
       const durationMs = Number(clock() - start) / 1_000_000;
@@ -73,9 +52,6 @@ export function requestMetrics<
   };
 }
 
-/**
- * Cria plugin escopado para registrar hooks de requestMetrics.
- */
 export function requestMetricsPlugin<
   TState extends AnyState = AnyState,
   TDecorators extends AnyDecorators = AnyDecorators,
