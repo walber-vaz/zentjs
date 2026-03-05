@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "examples/**/*",
+    "bench/**/*",
+    "*.ts",
+    "*.cjs",
+    ".husky/**/*"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

@@ -1,0 +1,13 @@
+.husky
+.github
+.git
+.gitignore
+.npmignore
+README.md
+LICENSE
+CHANGELOG.md
+docs
+test
+examples
+bench
+.editorconfig

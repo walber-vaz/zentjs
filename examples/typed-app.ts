@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { UnauthorizedError, zent } from '../src/zent.mjs';
+import { UnauthorizedError, zent } from '../src/zent';
 
 type AppState = {
   requestId?: string;

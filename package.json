@@ -4,18 +4,17 @@
   "description": "Framework web minimalista e performático para Node.js",
   "license": "BSD-3-Clause",
   "author": "Walber Vaz <wvs.walber@gmail.com>",
-  "type": "module",
-  "main": "./src/zent.mjs",
-  "types": "./src/zent.d.ts",
+  "type": "commonjs",
+  "main": "./dist/zent.js",
+  "types": "./dist/zent.d.ts",
   "exports": {
     ".": {
-      "types": "./src/zent.d.ts",
-      "import": "./src/zent.mjs"
+      "types": "./dist/zent.d.ts",
+      "require": "./dist/zent.js"
     }
   },
   "files": [
-    "src",
-    "src/zent.d.ts",
+    "dist",
     "README.md",
     "LICENSE"
   ],
@@ -42,23 +41,25 @@
     "esm"
   ],
   "scripts": {
-    "build": "npm run test && npm pack --dry-run",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc && npm pack --dry-run",
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "bench": "node bench/run-benchmarks.mjs",
-    "bench:save-baseline": "node bench/run-benchmarks.mjs --save-baseline",
-    "bench:frameworks": "node bench/frameworks-bench.mjs",
+    "bench": "tsx bench/run-benchmarks.ts",
+    "bench:save-baseline": "tsx bench/run-benchmarks.ts --save-baseline",
+    "bench:frameworks": "tsx bench/frameworks-bench.ts",
     "prepare": "husky",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "commitlint": "commitlint --from=HEAD~1 --to=HEAD --verbose",
     "prepublishOnly": "npm run build"
   },
   "lint-staged": {
-    "*.{js,mjs,cjs}": [
+    "*.{js,mjs,cjs,ts,mts}": [
       "eslint --fix",
       "prettier --write"
     ],
@@ -71,6 +72,8 @@
     "@commitlint/config-conventional": "^20.4.3",
     "@eslint/js": "10.0.1",
     "@types/node": "^25.3.3",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
     "@vitest/coverage-v8": "^4.0.18",
     "autocannon": "^8.0.0",
     "eslint": "10.0.2",
@@ -78,13 +81,16 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "express": "^5.2.1",
-    "fastify": "^5.7.4",
+    "fastify": "^5.8.1",
     "globals": "17.4.0",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "lint-staged": "^16.3.2",
     "prettier": "3.8.1",
     "supertest": "^7.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
     "vitest": "4.0.18"
   }
 }
