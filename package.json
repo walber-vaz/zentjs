@@ -78,7 +78,7 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "express": "^5.2.1",
-    "fastify": "^5.7.4",
+    "fastify": "^5.8.5",
     "globals": "17.4.0",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
